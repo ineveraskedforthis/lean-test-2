@@ -1,16 +1,20 @@
 def hello := "world"
 
-def is_symmetric_2 {k : Type} (m : k → k → k) :=
+@[simp]
+def is_symmetric_2 {k : Type}  (m : k → k → k) :=
   ∀ a, ∀ b, m a b = m b a
 
+@[simp]
 def is_left_identity {k : Type} (m : k → k → k) (e : k) :=
   ∀ a, m e a = a
 
+@[simp]
 def is_right_identity {k : Type} (m : k → k → k) (e : k) :=
   ∀ a, m a e = a
 
 def is_associative {k : Type} (m : k → k → k) :=
   ∀ a, ∀ b, ∀ c, m (m a b) c = m a (m b c)
+
 
 theorem left_identity_is_right_identity
   (k : Type)
@@ -35,20 +39,38 @@ def is_right_linear {k : Type} (add : k → k → k) (mul: k → k → k) :=
 def is_left_inverse {k : Type} (m : k → k → k) (e : k) (inv: k → k) :=
   ∀ a, m (inv a) a =e
 
-class ring (k : Type) where
+class ring where
+  k : Type
   add : k → k → k
   add_inverse : k → k
   mul : k → k → k
   e : k
   zero : k
+  non_trivial : ¬ e = zero
   add_inverse_is_inverse : is_left_inverse add zero add_inverse
   add_is_comm : is_symmetric_2 add
+  add_is_assoc : is_associative add
   mul_is_comm : is_symmetric_2 mul
-  e_is_identity : is_left_identity mul e
-  zero_is_identity : is_left_identity add zero
+  mul_is_assoc : is_associative mul
+  e_is_left_identity : is_left_identity mul e
+  zero_is_left_identity : is_left_identity add zero
+  e_is_right_identity : is_right_identity mul e
+  zero_is_right_identity : is_right_identity add zero
   mul_is_linear : is_left_linear add mul
 
-class field (k : Type) extends ring k where
+theorem add_inverse_of_non_zero_is_non_zero (R : ring) (a : R.k) (ha : ¬a = R.zero)
+  : ¬ R.add_inverse a = R.zero
+  := by
+  intro q
+  apply ha
+  have h_a_add_inverse := R.add_inverse_is_inverse a
+  rw [q] at h_a_add_inverse
+  rw [R.zero_is_left_identity] at h_a_add_inverse
+  apply h_a_add_inverse
+
+
+
+class field extends ring where
   mul_inverse : k → k
   mul_inverse_is_inverse : is_left_inverse mul e mul_inverse
 
@@ -109,11 +131,13 @@ theorem trim_leading_zeros_internal_idempotent {k : Type} [BEq k] [LawfulBEq k] 
 def trim_polynomial_list {k : Type} [BEq k] [LawfulBEq k] (zero : k) (a : List k) : List k :=
   (trim_leading_zeros_internal zero a.reverse).reverse
 
+@[simp]
 theorem trim_polynomial_list_idempotent {k : Type} [BEq k] [LawfulBEq k] (zero : k) (a : List k) :
   trim_polynomial_list zero (trim_polynomial_list zero a) = trim_polynomial_list zero a
   := by
   simp [trim_polynomial_list, trim_leading_zeros_internal_idempotent]
 
+@[simp]
 theorem trim_zero_glue_generator_internal
   {k : Type} [BEq k] [LawfulBEq k] (zero : k)
   (a : List k) : trim_leading_zeros_internal zero (zero :: a) = trim_leading_zeros_internal zero  a
@@ -121,12 +145,14 @@ theorem trim_zero_glue_generator_internal
   rw [trim_leading_zeros_internal]
   simp
 
+@[simp]
 theorem trim_zero_glue_generator_internal'
   {k : Type} [BEq k] [LawfulBEq k] (zero : k) : trim_leading_zeros_internal zero ([zero]) = []
   := by
   repeat rw [trim_leading_zeros_internal]
   simp
 
+@[simp]
 theorem trim_zero_glue_generator
   {k : Type} [BEq k] [LawfulBEq k] (zero : k)
   (a : List k) : trim_polynomial_list zero (a ++ [zero]) = trim_polynomial_list zero a
@@ -136,6 +162,7 @@ theorem trim_zero_glue_generator
   rw [List.reverse_concat]
   rw [trim_zero_glue_generator_internal]
 
+@[simp]
 theorem trim_zero_glue_generator'
   {k : Type} [BEq k] [LawfulBEq k] (zero : k) : trim_polynomial_list zero ([zero]) = []
   := by
@@ -144,19 +171,22 @@ theorem trim_zero_glue_generator'
   rw [trim_zero_glue_generator_internal']
   rw [List.reverse_nil]
 
+@[simp]
 theorem trim_zero_glue_nil
-  {k : Type} [BEq k] [LawfulBEq k] (zero : k) : trim_polynomial_list zero ([]) = []
+  {k : Type} [BEq k] [LawfulBEq k] (zero : k) : trim_polynomial_list zero [] = []
   := by
   rw [trim_polynomial_list]
   rw [List.reverse_nil]
   rw [trim_leading_zeros_internal]
   rw [List.reverse_nil]
 
+@[simp]
 theorem trim_zero_glue_singleton
   {k : Type} [BEq k] [LawfulBEq k] (zero : k) : trim_polynomial_list zero ([zero]) = []
   := by
   simp [trim_polynomial_list, trim_leading_zeros_internal]
 
+@[simp]
 theorem trim_non_zero_singleton
   {k : Type} [BEq k] [LawfulBEq k] (zero : k) (x: k) (hx : ¬(x == zero)) : trim_polynomial_list zero ([x]) = [x]
   := by
@@ -264,12 +294,12 @@ def mul_polynomial_list_at_degree_internal_summand
   k_mul ca cb
 
 theorem mul_polynomial_at_degree_internal_summand_symmetry
-  {k : Type} (k_zero : k) (k_mul : k → k → k) (mul_comm : is_symmetric_2 k_mul)
+  {k : Type}  (k_zero : k) (k_mul : k → k → k) (mul_comm : is_symmetric_2 k_mul)
   (a : List k) (b : List k) (i : Nat) (j : Nat)
   :
-  mul_polynomial_list_at_degree_internal_summand k_zero k_mul a b i j
+  (mul_polynomial_list_at_degree_internal_summand k_zero k_mul a b i j)
   =
-  mul_polynomial_list_at_degree_internal_summand k_zero k_mul b a j i
+  (mul_polynomial_list_at_degree_internal_summand k_zero k_mul b a j i)
   :=
   by
   simp[mul_polynomial_list_at_degree_internal_summand]
@@ -286,7 +316,7 @@ def mul_polynomial_list_at_degree_internal
   | i + 1 => mul_polynomial_list_at_degree_internal k_zero k_mul k_add a b d i (k_add acc (k_add acc current_summand))
 
 theorem mul_polynomial_at_degree_zero_polynomial_left
-  {k : Type} [BEq k]  [LawfulBEq k] (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
+  {k : Type} [BEq k]  [LawfulBEq k]  (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
   (mul_comm : is_symmetric_2 k_mul)
   (mul_zero_left : ∀ x : k, k_mul k_zero x = k_zero)
   (add_zero_left : ∀ x : k, k_add k_zero x = x)
@@ -311,7 +341,7 @@ theorem mul_polynomial_at_degree_zero_polynomial_left
     repeat assumption
 
 theorem mul_polynomial_at_degree_zero_polynomial_right
-  {k : Type} [BEq k]  [LawfulBEq k] (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
+  {k : Type} [BEq k]  [LawfulBEq k]  (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
   (mul_comm : is_symmetric_2 k_mul)
   (mul_zero_right : ∀ x : k, k_mul x k_zero = k_zero)
   (add_zero_left : ∀ x : k, k_add k_zero x = x)
@@ -342,7 +372,7 @@ def  mul_polynomial_list_at_degree
   mul_polynomial_list_at_degree_internal k_zero k_mul k_add a b d d k_zero
 
 theorem mul_polynomial_at_degree_zero_polynomial_left'
-  {k : Type} [BEq k]  [LawfulBEq k] (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
+  {k : Type} [BEq k]  [LawfulBEq k]  (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
   (mul_comm : is_symmetric_2 k_mul)
   (mul_zero_left : ∀ x : k, k_mul k_zero x = k_zero)
   (add_zero_left : ∀ x : k, k_add k_zero x = x)
@@ -356,7 +386,7 @@ theorem mul_polynomial_at_degree_zero_polynomial_left'
   repeat assumption
 
 theorem mul_polynomial_at_degree_zero_polynomial_right'
-  {k : Type} [BEq k]  [LawfulBEq k] (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
+  {k : Type} [BEq k]  [LawfulBEq k]  (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
   (mul_comm : is_symmetric_2 k_mul)
   (mul_zero_right : ∀ x : k, k_mul x k_zero = k_zero)
   (add_zero_left : ∀ x : k, k_add k_zero x = x)
@@ -380,7 +410,7 @@ def mul_polynomial_internal
   | next_current + 1 => mul_polynomial_internal k_zero k_mul k_add a b next_current (mul_at_current :: acc)
 
 theorem mul_polynomial_zero_left_internal
-  {k : Type} [BEq k] [LawfulBEq k] (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
+  {k : Type} [BEq k] [LawfulBEq k]  (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
   (mul_comm : is_symmetric_2 k_mul)
   (mul_zero_left : ∀ x : k, k_mul k_zero x = k_zero)
   (add_zero_left : ∀ x : k, k_add k_zero x = x)
@@ -445,7 +475,7 @@ def mul_polynomial
   mul_polynomial_internal k_zero k_mul k_add a b 0 []
 
 theorem mul_polynomial_zero_left
-  {k : Type} [BEq k] [LawfulBEq k] (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
+  {k : Type} [BEq k] [LawfulBEq k]  (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
   (mul_comm : is_symmetric_2 k_mul)
   (mul_zero_left : ∀ x : k, k_mul k_zero x = k_zero)
   (add_zero_left : ∀ x : k, k_add k_zero x = x)
@@ -468,6 +498,7 @@ def add_polynomial
   | a', [] => a'
   | xa :: a', xb :: b' => k_add xa xb :: (add_polynomial k_add a' b')
 
+@[simp]
 theorem add_polynomial_zero_left_0
   {k : Type} [BEq k] [LawfulBEq k] (k_add : k →  k → k)
   (a : List k)
@@ -479,6 +510,7 @@ theorem add_polynomial_zero_left_0
   repeat rfl
   simp_all
 
+@[simp]
 theorem add_polynomial_zero_right_0
   {k : Type} [BEq k] [LawfulBEq k] (k_add : k →  k → k)
   (a : List k)
@@ -490,6 +522,7 @@ theorem add_polynomial_zero_right_0
   repeat rfl
   simp_all
 
+@[simp]
 theorem add_polynomial_zero_left_1
   {k : Type} [BEq k] [LawfulBEq k] (k_zero : k) (k_add : k →  k → k)
   (add_zero_left : ∀ x : k, k_add k_zero x = x)
@@ -510,6 +543,7 @@ theorem add_polynomial_zero_left_1
     rw [add_zero_left]
     rw [add_polynomial_zero_left_0]
 
+@[simp]
 theorem add_polynomial_zero_right_1
   {k : Type} [BEq k] [LawfulBEq k] (k_zero : k) (k_add : k →  k → k)
   (add_zero_right: ∀ x : k, k_add x k_zero = x)
@@ -555,6 +589,7 @@ def polynomial_right_scalar_action
   :=
   a.map (k_mul . s)
 
+@[simp]
 theorem polynomial_left_identity_scalar_action
   {k : Type} (k_mul : k → k → k)
   (a : List k)  (k_left_identity : k) (h_identity : is_left_identity k_mul k_left_identity)
@@ -563,6 +598,14 @@ theorem polynomial_left_identity_scalar_action
   rw [polynomial_left_scalar_action]
   exact List.map_id'' h_identity a
 
+@[simp]
+theorem polynomial_right_identity_scalar_action
+  {k : Type} (k_mul : k → k → k)
+  (a : List k)  (k_right_identity : k) (h_identity : is_right_identity k_mul k_right_identity)
+  : polynomial_right_scalar_action k_mul a k_right_identity = a
+  := by
+  rw [polynomial_right_scalar_action]
+  exact List.map_id'' h_identity a
 
 def mul_polynomial'
   {k : Type} (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
@@ -574,6 +617,8 @@ def mul_polynomial'
     add_polynomial k_add
       (polynomial_left_scalar_action k_mul x b)
       (polynomial_shift_1 k_zero (mul_polynomial' k_zero k_mul k_add a' b))
+
+
 
 def mul_polynomial''
   {k : Type} (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
@@ -667,7 +712,6 @@ theorem trim_internal_helper_not_all_zero {k : Type} [BEq k] [LawfulBEq k] (k_ze
       rw [trim_leading_zeros_internal]
     if xa = k_zero then
       simp_all [trim_internal_helper_not_all_zero]
-      rw [trim_zero_glue_generator_internal]
     else
       simp_all [trim_leading_zeros_internal]
 
@@ -769,7 +813,7 @@ theorem add_polynomial_of_all_zero {k : Type} [BEq k] [LawfulBEq k]
   : (add_polynomial k_add a b).all (fun x ↦ (x == k_zero))
   := by
   match a, b with
-  | [], [] => simp[add_polynomial_zero_left_0]
+  | [], [] => simp
   | [xa], [xb] => simp_all[add_polynomial]
   | [], b' =>
     simp_all [add_polynomial_zero_left_0]
@@ -843,6 +887,13 @@ theorem add_polynomial_all_zero_right {k : Type} [BEq k] [LawfulBEq k]
     simp_all
     apply hb.right
 
+theorem polynomial_shift_1_respect_trim {k : Type} [BEq k] [LawfulBEq k](k_zero : k)  (a : List k)
+  : trim_polynomial_list k_zero ( polynomial_shift_1 k_zero a)
+  = trim_polynomial_list k_zero ( polynomial_shift_1 k_zero (trim_polynomial_list k_zero a))
+  := by
+  rw [polynomial_shift_1, polynomial_shift_1]
+  rw [cons_respects_trim]
+
 theorem add_polynomial_respect_trim {k : Type} [BEq k] [LawfulBEq k]
   (k_zero : k) (k_add : k →  k → k)
   (add_zero_left: ∀ x : k, k_add k_zero x = x)
@@ -873,7 +924,7 @@ theorem add_polynomial_respect_trim {k : Type} [BEq k] [LawfulBEq k]
     rw [trim_leading_zeros_internal]
     if hxa : xa == k_zero then
       if xb == k_zero then
-        simp_all[trim_polynomial_list, trim_leading_zeros_internal, add_polynomial_zero_left_0]
+        simp_all[trim_polynomial_list, trim_leading_zeros_internal]
       else
         simp_all[trim_polynomial_list, trim_leading_zeros_internal, add_polynomial_zero_left_0]
     else
@@ -1008,6 +1059,7 @@ theorem add_polynomial_respects_trim_second_arg {k : Type} [BEq k] [LawfulBEq k]
   rw [trim_polynomial_list_idempotent]
   repeat assumption
 
+@[simp]
 theorem mul_polynomial'_zero_left
   {k : Type} (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
   (a : List k)
@@ -1016,6 +1068,7 @@ theorem mul_polynomial'_zero_left
   := by
   rw [mul_polynomial']
 
+@[simp]
 theorem mul_polynomial'_zero_right
   {k : Type}  [BEq k] [LawfulBEq k] (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
   (a : List k)
@@ -1035,6 +1088,24 @@ theorem mul_polynomial'_zero_right
     rw [mul_polynomial'_zero_right]
     rw [trim_zero_glue_generator']
 
+@[simp]
+theorem mul_zero_scalar_right
+  {k : Type}  [BEq k] [LawfulBEq k] (k_zero : k) (k_mul : k → k → k)
+  (a : k)
+  :
+  trim_polynomial_list k_zero (polynomial_right_scalar_action k_mul [] a) = []
+  := by
+  simp[polynomial_right_scalar_action]
+
+@[simp]
+theorem mul_zero_scalar_left
+  {k : Type}  [BEq k] [LawfulBEq k] (k_zero : k) (k_mul : k → k → k)
+  (a : k)
+  :
+  trim_polynomial_list k_zero (polynomial_left_scalar_action k_mul a []) = []
+  := by
+  simp[polynomial_left_scalar_action]
+
 theorem polynomial_scalar_action
   {k : Type} [BEq k] [LawfulBEq k] (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
   (add_zero_right: ∀ x : k, k_add x k_zero = x)
@@ -1051,25 +1122,74 @@ theorem polynomial_scalar_action
   apply add_zero_right
 
 
+theorem polynomial_scalar_action'
+  {k : Type} [BEq k] [LawfulBEq k] (k_zero : k) (k_mul : k → k → k) (k_add : k →  k → k)
+  (add_zero_right: ∀ x : k, k_add x k_zero = x)
+  (add_zero_left: ∀ x : k, k_add k_zero x = x)
+  (a : List k) (s : k)
+  :
+  trim_polynomial_list k_zero (mul_polynomial' k_zero k_mul k_add a [s])
+  =
+  trim_polynomial_list k_zero (polynomial_right_scalar_action k_mul a s)
+  := by
+  match a with
+  | [] =>
+    simp
+  | xa :: a' =>
+    rw [mul_polynomial']
+    rw [polynomial_left_scalar_action]
+    rw [add_polynomial_respect_trim]
+    rw [polynomial_shift_1_respect_trim]
+    rw [polynomial_scalar_action' k_zero]
+    rw [←polynomial_shift_1_respect_trim]
+    rw [←add_polynomial_respect_trim]
+    rw [polynomial_shift_1]
+    simp
+    rw [add_polynomial]
+    rw [add_polynomial_zero_left_0]
+    rw [polynomial_right_scalar_action]
+    rw [add_zero_right]
+    rw [polynomial_right_scalar_action]
+    rw [List.map_cons]
+    repeat assumption
 
 def monomial
   {k : Type} (k_zero : k) (a : k) (n : Nat)
   :=
   polynomial_shift k_zero [a] n
 
+@[simp]
 theorem left_identity_is_polynomial_left_identity
   {k : Type} [BEq k] [LawfulBEq k] (k_zero : k)
   (k_mul : k → k → k) (k_add : k →  k → k) (k_left_identity : k) (add_zero_right : ∀ x : k, k_add x k_zero = x)
   (h_identity : is_left_identity k_mul k_left_identity)
   (a : List k)
   :
-  trim_polynomial_list k_zero a
-  =
   trim_polynomial_list k_zero (mul_polynomial' k_zero k_mul k_add [k_left_identity] a)
+  =
+  trim_polynomial_list k_zero a
   := by
   rw [polynomial_scalar_action]
   rw [polynomial_left_identity_scalar_action]
   repeat assumption
+
+@[simp]
+theorem right_identity_is_polynomial_right_identity
+  {k : Type} [BEq k] [LawfulBEq k] (k_zero : k)
+  (k_mul : k → k → k) (k_add : k →  k → k) (k_right_identity : k)
+  (add_zero_right : ∀ x : k, k_add x k_zero = x)
+  (add_zero_left : ∀ x : k, k_add k_zero x = x)
+  (h_right_identity : is_right_identity k_mul k_right_identity)
+  (a : List k)
+  :
+  trim_polynomial_list k_zero (mul_polynomial' k_zero k_mul k_add a [k_right_identity])
+  =
+  trim_polynomial_list k_zero a
+  := by
+  rw [polynomial_scalar_action']
+  rw [polynomial_right_identity_scalar_action]
+  repeat assumption
+
 
 theorem add_polynomial_scalar_left
   {k : Type} [BEq k] [LawfulBEq k]  (k_add : k →  k → k) (a : List k) (x : k) (y : k)
@@ -1183,12 +1303,14 @@ theorem add_polynomial_associative'
 
 theorem add_polynomial_symmetric
   {k : Type} [BEq k] [LawfulBEq k] (k_add : k →  k → k) (k_add_symmetric : is_symmetric_2 k_add) (a : List k) (b : List k):
-  add_polynomial k_add a b = add_polynomial k_add b a := by
+  (add_polynomial k_add a b) = (add_polynomial k_add b a) := by
   match a, b with
-  | [], b => simp[add_polynomial_zero_left_0, add_polynomial_zero_right_0]
-  | a, [] => simp[add_polynomial_zero_left_0, add_polynomial_zero_right_0]
+  | [], b =>
+    simp[add_polynomial_zero_left_0, add_polynomial_zero_right_0]
+  | a, [] =>
+    simp[add_polynomial_zero_left_0, add_polynomial_zero_right_0]
   | xa :: a', xb :: b' =>
-    rw [add_polynomial, add_polynomial, k_add_symmetric, add_polynomial_symmetric]
+    rw [add_polynomial, add_polynomial, k_add_symmetric , add_polynomial_symmetric]
     repeat assumption
 
 
@@ -1208,11 +1330,8 @@ def mul_polynomial'_cons_linear_right
     rw [mul_polynomial'_zero_left]
     rw [polynomial_right_scalar_action]
     simp
-    rw [add_polynomial_zero_left_0 ]
-    rw [mul_polynomial'_zero_left]
     rw [polynomial_shift_1]
     rw [trim_zero_glue_singleton]
-    rw [trim_zero_glue_nil]
   | x' :: a' =>
     rw[mul_polynomial']
     rw[add_polynomial_respect_trim]
@@ -1354,4 +1473,347 @@ theorem mul_polynomial'_symmetric
 
 def mul_nat_polynomial (a : List Nat) (b : List Nat) := mul_polynomial' (0: Nat) (Nat.mul) (Nat.add) a b
 
-#eval mul_nat_polynomial [1, 2, 1, 0] []
+def add_polynomial_safe {k: Type} [BEq k] [LawfulBEq k] (k_zero : k) (k_add : k → k → k) (a : List k) (b : List k) :=
+  trim_polynomial_list k_zero (add_polynomial k_add (trim_polynomial_list k_zero a) (trim_polynomial_list k_zero b))
+
+def mul_polynomial_safe {k: Type} [BEq k] [LawfulBEq k] (k_zero : k)
+  (k_mul : k → k → k) (k_add : k → k → k) (a : List k) (b : List k) :=
+  trim_polynomial_list k_zero (mul_polynomial' k_zero k_mul k_add (trim_polynomial_list k_zero a) (trim_polynomial_list k_zero b))
+
+theorem mul_polynomial_safe_is_symmetric
+  {k : Type} [BEq k] [LawfulBEq k] (k_zero : k) (k_left_identity : k)
+  (k_mul : k → k → k) (k_add : k →  k → k)
+  (add_zero_left : ∀ x : k, k_add k_zero x = x)
+  (add_zero_right : ∀ x : k, k_add x k_zero = x)
+  (k_mul_comm : is_symmetric_2 k_mul)
+  (k_mul_assoc : is_associative k_mul)
+  (k_add_comm : is_symmetric_2 k_add)
+  (k_add_assoc : is_associative k_add)
+  (h_identity : is_left_identity k_mul k_left_identity)
+  : is_symmetric_2 (mul_polynomial_safe k_zero k_mul k_add) := by
+  intro a b
+  rw[mul_polynomial_safe]
+  rw[mul_polynomial'_symmetric k_zero k_left_identity k_mul k_add]
+  rw[←mul_polynomial_safe]
+  repeat assumption
+
+theorem add_polynomial_safe_is_associative
+  {k : Type} [BEq k] [LawfulBEq k] (k_zero : k) (k_add : k →  k → k) (k_add_assoc : is_associative k_add)
+  (add_zero_left : ∀ x : k, k_add k_zero x = x)
+  (add_zero_right : ∀ x : k, k_add x k_zero = x)
+  (a : List k) (b : List k) (c : List k):
+    add_polynomial_safe k_zero k_add a (add_polynomial_safe k_zero k_add b c) =
+    add_polynomial_safe k_zero k_add (add_polynomial_safe k_zero k_add a b) c
+  := by
+  rw [add_polynomial_safe, add_polynomial_safe, add_polynomial_safe, add_polynomial_safe]
+  rw [trim_polynomial_list_idempotent, trim_polynomial_list_idempotent]
+  rw [add_polynomial_associative']
+  repeat assumption
+
+structure reduced_polynomial {k : Type} [BEq k] [LawfulBEq k] (zero : k)  where
+  value : List k
+  is_reduced : trim_polynomial_list zero value = value
+
+theorem ext_both_directions {k : Type} [BEq k] [LawfulBEq k]  (zero : k) {p q : reduced_polynomial zero} : p = q ↔ p.value = q.value := by
+  constructor
+  · intro h; simp [h]
+  · intro h; cases p; cases q; simp at h; simp [h]
+
+@[ext]
+theorem ext_direct {k : Type} [BEq k] [LawfulBEq k]  (zero : k) {p q : reduced_polynomial zero}
+  (values_are_equal : p.value = q.value) :  p = q := by
+  cases p;
+  cases q;
+  simp at values_are_equal
+  simp [values_are_equal]
+
+
+
+
+
+
+theorem add_polynomial_safe_is_reduced
+  {k : Type}
+  [BEq k] [LawfulBEq k]
+  (k_zero : k) (k_add : k → k → k)
+  (a : List k) (b : List k)
+  : trim_polynomial_list k_zero (add_polynomial_safe k_zero k_add a b) = add_polynomial_safe k_zero k_add a b
+  := by
+  rw [add_polynomial_safe]
+  rw [trim_polynomial_list_idempotent]
+
+theorem mul_polynomial_safe_is_reduced
+  {k: Type} [BEq k] [LawfulBEq k] (k_zero : k)
+  (k_mul : k → k → k) (k_add : k → k → k)
+  (a : List k) (b : List k)
+  : trim_polynomial_list k_zero (mul_polynomial_safe k_zero k_mul k_add a b)
+  = mul_polynomial_safe k_zero k_mul k_add a b
+  := by
+  rw [mul_polynomial_safe]
+  rw [trim_polynomial_list_idempotent]
+
+def add_reduced_polynomial
+  {k : Type}
+  [BEq k] [LawfulBEq k]
+  (k_zero : k) (k_add : k → k → k)
+  (a : reduced_polynomial k_zero) (b : reduced_polynomial k_zero)
+  : reduced_polynomial k_zero
+  := {
+    value := add_polynomial_safe k_zero k_add a.value b.value
+    is_reduced := by
+      apply add_polynomial_safe_is_reduced k_zero k_add
+  }
+
+def mul_reduced_polynomial
+  {k: Type} [BEq k] [LawfulBEq k] (k_zero : k)
+  (k_mul : k → k → k) (k_add : k → k → k)
+  (a : reduced_polynomial k_zero) (b : reduced_polynomial k_zero)
+  : reduced_polynomial k_zero
+  := {
+    value := mul_polynomial_safe k_zero k_mul k_add a.value b.value
+    is_reduced := by
+      apply mul_polynomial_safe_is_reduced
+  }
+
+def add_inverse {R : ring} [BEq R.k] [LawfulBEq R.k] (a : reduced_polynomial R.zero) : List R.k :=
+  a.value.map R.add_inverse
+
+@[simp]
+theorem no_leading_zero_after_trimming_leading_zero {k : Type} [BEq k] [LawfulBEq k]
+  (zero : k) (a : List k) (b :List k) (c : k) (h : trim_leading_zeros_internal zero a = c :: b) :
+  ¬ c = zero := by
+  rw [trim_leading_zeros_internal.eq_def] at h
+  split at h
+  simp_all
+  split at h
+  apply no_leading_zero_after_trimming_leading_zero
+  assumption
+  simp_all
+
+theorem reduced_iff_non_zero_tail {k : Type} [BEq k] [LawfulBEq k] (zero : k) (s : k) (a : List k)
+  :  trim_polynomial_list zero (a ++ [s]) = (a ++ [s]) ↔ ¬ s = zero := by
+  constructor
+  intro h
+  rw [trim_polynomial_list] at h
+  simp_all
+  rw [trim_leading_zeros_internal] at h
+  false_or_by_contra
+  simp_all
+  have afsds := no_leading_zero_after_trimming_leading_zero zero a.reverse a.reverse zero h
+  apply afsds
+  rfl
+
+  intro s_not_zero
+  rw [trim_polynomial_list]
+  simp
+  rw [trim_leading_zeros_internal]
+  simp_all
+
+@[simp]
+theorem reduced_tail_of_reduced_internal {R : ring} [BEq R.k] [LawfulBEq R.k]
+  (x : R.k) (a : List R.k) (h : trim_leading_zeros_internal R.zero (a ++ [x]) = a ++ [x]) :
+  trim_leading_zeros_internal R.zero a = a := by
+  rw [trim_leading_zeros_internal.eq_def] at h
+  split at h
+  case h_1 a' ha' =>
+    simp_all
+  case h_2 a' a'' ha =>
+    have ha' :=List.cons_eq_append_iff.mp (Eq.symm ha)
+    rcases ha' with ha'1 |ha'2
+    · case inl =>
+      simp_all [trim_leading_zeros_internal]
+    · case inr =>
+      rcases ha'2 with ⟨ q, ⟨ qq, qqq ⟩  ⟩
+      rw [qq]
+      rw [trim_leading_zeros_internal]
+      split
+      case isTrue a'_is_zero =>
+        rw [qq] at ha
+        have q_def := (List.cons_inj_right a').mp ha
+        rw [qq] at h
+        simp at a'_is_zero
+        rw [a'_is_zero] at h
+        simp at h
+        have dafe := no_leading_zero_after_trimming_leading_zero R.zero a'' (q ++ [x]) R.zero h
+        contradiction
+      case isFalse a'_is_not_zero =>
+        rfl
+
+theorem a_decomposition {k : Type} (a : List k) (x : k) : ∃ c, ∃ aq, x :: a = aq ++ [c] :=
+    match a with
+    | [] => ⟨ x, by simp ⟩
+    | xa :: a' => by
+      rcases a_decomposition a' xa with ⟨ tail, head, tail_is_okay ⟩
+      rw [tail_is_okay]
+      exists tail, (x :: head)
+
+
+@[simp]
+theorem reduced_of_reduced_tail {R : ring} [BEq R.k] [LawfulBEq R.k]
+  (x : R.k) (x' : R.k) (a : List R.k) (h : trim_polynomial_list R.zero (x :: a) = (x :: a)) :
+  trim_polynomial_list R.zero (x' :: (x :: a)) = (x' :: (x :: a)) := by
+  have a_d := a_decomposition a x
+  rcases a_d with ⟨ tail, head, valid_decomposition ⟩
+  rw [valid_decomposition]
+  repeat rw [←List.cons_append]
+  rw [valid_decomposition] at h
+  have non_zero_tail := (reduced_iff_non_zero_tail R.zero tail head).mp h
+  apply (reduced_iff_non_zero_tail R.zero tail (x' :: head)).mpr
+  apply non_zero_tail
+
+theorem reduced_tail_of_reduced {R : ring} [BEq R.k] [LawfulBEq R.k]
+  (x : R.k) (a : List R.k) (h : trim_polynomial_list R.zero (x :: a) = x :: a) :
+  trim_polynomial_list R.zero a = a := by
+  rw [trim_polynomial_list] at *
+  simp_all
+  rw [reduced_tail_of_reduced_internal]
+  apply List.reverse_reverse
+  apply x
+  apply h
+
+theorem add_inverse_is_reduced (R : ring) [BEq R.k] [LawfulBEq R.k]
+  (a : List R.k)
+  (is_reduced : trim_polynomial_list R.zero a = a)
+  :
+  trim_polynomial_list R.zero (a.map R.add_inverse) =(a.map R.add_inverse) := by
+  match a with
+  | [] =>
+    simp
+  | [xa] =>
+    simp_all [trim_singleton]
+    apply add_inverse_of_non_zero_is_non_zero
+    apply is_reduced
+  | xa :: xa' :: a' =>
+    have xa'_a'_is_reduced := reduced_tail_of_reduced xa (xa' :: a') is_reduced
+    have a'_is_reduced := reduced_tail_of_reduced xa' a' (reduced_tail_of_reduced xa (xa' :: a') is_reduced)
+    have a'_inversed_is_reduced := add_inverse_is_reduced R a' a'_is_reduced
+    rw [List.map_cons, List.map_cons]
+    apply reduced_of_reduced_tail
+    rw [←List.map_cons]
+    apply add_inverse_is_reduced
+    apply reduced_tail_of_reduced xa
+    apply is_reduced
+
+theorem inverse_is_left_inverse (R : ring) [BEq R.k] [LawfulBEq R.k] (a : List R.k) :
+  trim_polynomial_list R.zero (add_polynomial R.add (a.map R.add_inverse) a) = [] :=
+  by
+  match a with
+  | [] => simp
+  | x :: a =>
+    rw [List.map_cons]
+    rw [add_polynomial]
+    rw [cons_respects_trim]
+    rw [R.add_inverse_is_inverse]
+    rw [inverse_is_left_inverse]
+    apply trim_zero_glue_singleton
+
+@[reducible]
+def polynomial_ring (R : ring) [BEq R.k] [LawfulBEq R.k] : ring :=
+  {
+    k := (reduced_polynomial R.zero)
+    add := add_reduced_polynomial R.zero R.add
+    zero := {
+      value := []
+      is_reduced := by
+        apply trim_zero_glue_nil
+    }
+    add_inverse (a : reduced_polynomial R.zero) := {
+      value := a.value.map R.add_inverse
+      is_reduced := by
+        apply add_inverse_is_reduced R a.value
+        apply a.is_reduced
+    }
+    mul := mul_reduced_polynomial R.zero R.mul R.add
+    e := {
+      value := [R.e]
+      is_reduced := by
+        simp [R.non_trivial]
+    }
+    non_trivial := by
+      simp
+    add_inverse_is_inverse := by
+      rw [is_left_inverse]
+      intro a
+      rw [add_reduced_polynomial]
+      simp [add_polynomial_safe]
+      rw [←add_polynomial_respect_trim]
+      apply inverse_is_left_inverse
+      apply R.zero_is_left_identity
+      apply R.zero_is_right_identity
+    add_is_comm := by
+      rw [is_symmetric_2]
+      intro a b
+      rw [add_reduced_polynomial, add_reduced_polynomial]
+      simp
+      rw [add_polynomial_safe]
+      rw [add_polynomial_symmetric]
+      rw [←add_polynomial_safe]
+      apply R.add_is_comm
+    mul_is_comm := by
+      intro a b
+      simp [mul_reduced_polynomial, mul_reduced_polynomial]
+      rw [mul_polynomial_safe_is_symmetric R.zero R.e]
+      apply R.zero_is_left_identity
+      intro x
+      rw [R.add_is_comm]
+      apply R.zero_is_left_identity
+      apply R.mul_is_comm
+      apply R.mul_is_assoc
+      apply R.add_is_comm
+      apply R.add_is_assoc
+      apply R.e_is_left_identity
+    e_is_left_identity := by
+      intro a
+      rw [mul_reduced_polynomial]
+      apply ext_direct
+      simp
+      rw [mul_polynomial_safe]
+      rw [trim_singleton]
+      simp [R.non_trivial, a.is_reduced]
+      rw [left_identity_is_polynomial_left_identity]
+      apply a.is_reduced
+      intro x
+      apply R.zero_is_right_identity x
+      apply R.e_is_left_identity
+    zero_is_left_identity := by
+      intro a
+      simp [add_reduced_polynomial, add_polynomial_safe, trim_zero_glue_nil]
+      apply ext_direct
+      simp
+      rw [a.is_reduced]
+    mul_is_linear := sorry
+    add_is_assoc := by
+      rw [is_associative]
+      intro a b c
+      repeat rw [add_reduced_polynomial]
+      simp
+      rw [add_polynomial_safe_is_associative R.zero  R.add R.add_is_assoc]
+      apply R.zero_is_left_identity
+      intro x
+      rw [R.add_is_comm]
+      apply R.zero_is_left_identity
+    mul_is_assoc := by
+      rw [is_associative]
+      intro a b c
+      sorry
+    e_is_right_identity := by
+      intro a
+      rw [mul_reduced_polynomial]
+      apply ext_direct
+      simp
+      rw [mul_polynomial_safe]
+      rw [trim_singleton]
+      simp [R.non_trivial, a.is_reduced]
+      rw [right_identity_is_polynomial_right_identity]
+      apply a.is_reduced
+      intro x
+      apply R.zero_is_right_identity x
+      apply R.zero_is_left_identity
+      apply R.e_is_right_identity
+    zero_is_right_identity := by
+      intro a
+      simp [add_reduced_polynomial, add_polynomial_safe, a.is_reduced]
+  }
+
+
+#eval mul_nat_polynomial [1, 2, 1, 0] [1, 2, 1]
