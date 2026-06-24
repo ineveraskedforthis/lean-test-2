@@ -1,6 +1,6 @@
 def hello := "world"
 
-universe u
+universe u v w
 
 @[simp]
 def is_symmetric_2 {k : Type u}  (m : k → k → k) :=
@@ -72,6 +72,9 @@ class additive_monoid (k : Type u) extends choose_zero k, add k where
   add_zero_right (a : k) : add a zero = a
   add_is_assoc (a b c : k) : add (add a b) c = add a (add b c)
 
+notation "⟨0⟩" => choose_zero.zero
+notation "⟨1⟩" => choose_e.e
+
 class multiplicative_monoid (k : Type u) extends choose_e k, mul k where
   mul_e_right (a : k) : mul a e = a
   mul_e_left (a : k) : mul e a = a
@@ -121,7 +124,8 @@ class ring (k : Type u) extends commutative_additive_monoid k, commutative_multi
   add_inverse : k → k
   -- non_trivial : ¬ e = zero
   add_inverse_is_inverse : is_left_inverse add zero add_inverse
-  mul_is_linear : is_left_linear add mul
+  mul_is_linear_left : is_left_linear add mul
+  mul_is_linear_right : is_right_linear add mul
 
 
 export ring (add_inverse_is_inverse)
@@ -129,13 +133,106 @@ attribute [simp] add_inverse_is_inverse
 
 class ring_to_string (k : Type u) extends ring k, ToString k
 
--- class ring_with_selected_element (k : Type u) extends ring_to_string k
+class function_wrapper (F : Type) (S T: outParam Type) where
+  original_function : F → S → T
 
-class ring_with_selected_element (k : Type u) extends ring_to_string k where
-  selected_element_string : String
-  selected_element_value : k
+instance [function_wrapper F S T]
+  : CoeFun F (fun _ ↦ S → T) where
+  coe := function_wrapper.original_function
+attribute [coe] function_wrapper.original_function
 
--- instance (k : Type u) : CoeDep (ring_with_selected_element k) (ring_to_string k) where
+structure additive_monoid_hom₁
+  (s : Type w) [Ms : additive_monoid s]
+  (k : Type u) [Mk : additive_monoid k] where
+  original_function : s → k
+  map_zero : original_function Ms.zero = Mk.zero
+  map_add (x y : s) : original_function (Ms.add x y) = Mk.add (original_function x) (original_function y)
+
+export additive_monoid_hom₁ (map_zero)
+attribute [simp] map_zero
+
+instance
+  [additive_monoid s] [additive_monoid k]
+  : CoeFun (additive_monoid_hom₁ s k) (fun _ ↦ s → k) where
+  coe := additive_monoid_hom₁.original_function
+attribute [coe] additive_monoid_hom₁.original_function
+
+structure multiplicative_monoid_hom₁
+  (s : Type w) [Ms : multiplicative_monoid s]
+  (k : Type u) [Mk : multiplicative_monoid k] where
+  original_function : s → k
+  map_e : original_function Ms.e = Mk.e
+  map_mul (x y : s) : original_function (Ms.mul x y) = Mk.mul (original_function x) (original_function y)
+
+export multiplicative_monoid_hom₁ (map_e)
+attribute [simp] map_e
+
+instance
+  [multiplicative_monoid s] [multiplicative_monoid k]
+  : CoeFun (multiplicative_monoid_hom₁ s k) (fun _ ↦ s → k) where
+  coe := multiplicative_monoid_hom₁.original_function
+attribute [coe] multiplicative_monoid_hom₁.original_function
+
+structure ring_hom₁
+  (s : Type w) [ring s]
+  (k : Type u) [ring k]
+  extends additive_monoid_hom₁ s k, multiplicative_monoid_hom₁ s k
+
+class additive_monoid_hom₂
+  (F : Type)
+  (s t : outParam Type)
+  [As : additive_monoid s] [At : additive_monoid t] extends function_wrapper F s t
+  where
+  map_zero (f : F) : original_function f As.zero = At.zero
+  map_add (f : F) (x y : s) : original_function f (As.add x y) = At.add (original_function f x) (original_function f y)
+
+-- instance [additive_monoid M] [additive_monoid N] [additive_monoid_hom₂ F M N] : CoeFun F (fun _ ↦ M → N) where
+--   coe := additive_monoid_hom₂.original_function
+-- attribute [coe] additive_monoid_hom₂.original_function
+attribute [simp] additive_monoid_hom₂.map_zero
+
+class multiplicative_monoid_hom₂
+  (F : Type)
+  (s t : outParam Type)
+  [As : multiplicative_monoid s] [At : multiplicative_monoid t] extends function_wrapper F s t
+  where
+  map_e (f : F) : original_function f As.e = At.e
+  map_mul (f : F) (x y : s) : original_function f (As.mul x y) = At.mul (original_function f x) (original_function f y)
+
+-- instance [multiplicative_monoid M] [multiplicative_monoid N] [multiplicative_monoid_hom₂ F M N]
+--   : function_wrapper M N (multiplicative_monoid_hom₂ F M N)  where
+--   coe := multiplicative_monoid_hom₂.original_function
+-- attribute [coe] multiplicative_monoid_hom₂.original_function
+attribute [simp] multiplicative_monoid_hom₂.map_e
+
+@[simp]
+def compose_ring_hom [ring R] [ring S] [ring T] (f : ring_hom₁ R S) (g : ring_hom₁ S T) : ring_hom₁ R T :=
+  {
+    original_function (x) := g.original_function ( f.original_function x )
+    map_zero := by simp
+    map_add := by
+      intro x y;
+      rw [f.map_add, g.map_add]
+    map_e := by rw [f.map_e, g.map_e]
+    map_mul := by
+      intro x y;
+      rw [f.map_mul, g.map_mul]
+  }
+
+instance (R S : Type) [ring R] [ring S] : multiplicative_monoid_hom₂ (ring_hom₁ R S) R S where
+  original_function := fun f ↦ f.tomultiplicative_monoid_hom₁.original_function
+  map_e := fun f ↦ f.tomultiplicative_monoid_hom₁.map_e
+  map_mul := fun f ↦ f.tomultiplicative_monoid_hom₁.map_mul
+
+variable[ring R] [ring S] (test : ring_hom₁ R S)
+#check CoeFun.coe test
+
+class free_algebra (s : Type w) (k : Type u) [ring s] extends ring k where
+  var : k
+  induced_map {t : Type} [ring t] (f : ring_hom₁ s t) (target : t)
+    : ring_hom₁ k t
+  induced_map_is_valid {t : Type} [ring t] (f : ring_hom₁ s t) (target : t)
+    : (induced_map f target).original_function var = target
 
 theorem add_inverse_of_non_zero_is_non_zero (R : ring k) (a : k) (ha : ¬a = R.zero)
   : ¬ R.add_inverse a = R.zero
@@ -182,7 +279,7 @@ theorem left_inverse_is_unique (R : ring k)
   rw [h_left_inv]
   rw [R.add_zero_left]
 
-
+@[simp]
 theorem mul_zero_any_is_zero (R : ring k) (a : k)
   : R.mul R.zero a = R.zero
   := by
@@ -193,9 +290,16 @@ theorem mul_zero_any_is_zero (R : ring k) (a : k)
     arg 2
     rw [←ri]
   rw [←R.add_is_assoc]
-  rw [←R.mul_is_linear]
+  rw [←R.mul_is_linear_left]
   rw [R.add_zero_left]
   rw [ri]
+
+@[simp]
+theorem mul_any_zero_is_zero (R : ring k) (a : k)
+  : R.mul a R.zero = R.zero
+  := by
+  rw [R.mul_is_comm]
+  apply mul_zero_any_is_zero
 
 theorem e_eq_zero_then_one_element {k : Type u} [R: ring k] (h : R.e = R.zero) (a : k) : (a = R.zero) := by
   rw [←R.mul_e_left a]
@@ -206,7 +310,7 @@ theorem inverse_respects_mul (R : ring k) (a : k) (b : k)
   : R.mul (R.add_inverse a) b = R.add_inverse (R.mul a b)
   := by
   apply left_inverse_is_unique
-  rw [←R.mul_is_linear]
+  rw [←R.mul_is_linear_left]
   rw [R.add_inverse_is_inverse]
   apply mul_zero_any_is_zero
 
@@ -708,6 +812,7 @@ def polynomial_left_scalar_action
   a.map (M.mul s)
 
 infix:90 "∘→" => polynomial_left_scalar_action
+
 
 def polynomial_right_scalar_action
   {k : Type u} [M : mul k]
@@ -1623,6 +1728,7 @@ structure reduced_polynomial (k : Type u) [Z : choose_zero k] [BEq k] [LawfulBEq
   value : List k
   is_reduced : trim_polynomial_list value = value
 
+
 theorem ext_both_directions (k : Type u) [Z : choose_zero k] [BEq k] [LawfulBEq k] {p q : reduced_polynomial k} : p = q ↔ p.value = q.value := by
   constructor
   · intro h; simp [h]
@@ -1706,6 +1812,13 @@ def mul_reduced_polynomial
 
 def add_inverse {k : Type u} {R : ring k} [BEq k] [LawfulBEq k] (a : reduced_polynomial k) : List k :=
   a.value.map R.add_inverse
+
+structure reduced_polynomial_ring_data_layout (k : Type u) [ring k] [BEq k] [LawfulBEq k] where
+  add : reduced_polynomial k → reduced_polynomial k  → reduced_polynomial k
+  mul : reduced_polynomial k → reduced_polynomial k  → reduced_polynomial k
+  add_inverse : reduced_polynomial k → reduced_polynomial k
+
+
 
 @[simp]
 theorem no_leading_zero_after_trimming_leading_zero {k : Type u} [BEq k] [LawfulBEq k]
@@ -1848,7 +1961,7 @@ theorem polynomial_left_scalar_action_left_linear (R : ring k) [BEq k] [LawfulBE
   | xa :: a' =>
     simp
     rw [add_polynomial]
-    rw [R.mul_is_linear x y xa]
+    rw [R.mul_is_linear_left x y xa]
     apply (List.cons_inj_right _).mpr
     rw [←polynomial_left_scalar_action]
     rw [polynomial_left_scalar_action_left_linear]
@@ -1871,7 +1984,7 @@ theorem polynomial_left_scalar_action_right_linear (R : ring k) [BEq k] [LawfulB
     rw [add_polynomial]
     rw [List.map_cons]
     rw [R.mul_is_comm]
-    rw [R.mul_is_linear]
+    rw [R.mul_is_linear_left]
     rw [R.mul_is_comm]
     conv =>
       lhs
@@ -2038,8 +2151,6 @@ theorem polynomial_left_scalar_action_respects_trim  (R : ring k) [BEq k] [Lawfu
       simp_all
       if xa = R.zero then
         simp_all
-        rw [R.mul_is_comm]
-        apply mul_zero_any_is_zero R
       else
         simp_all
         rw [trim_singleton]
@@ -2091,8 +2202,6 @@ theorem mul_polynomial_respects_trim_1  (R : ring k) [BEq k] [LawfulBEq k] (a : 
       simp_all
       apply trim_zero_all
       simp_all
-      intro x hx
-      apply mul_zero_any_is_zero
       case isFalse w1 w2 =>
         rw [mul_polynomial']
         simp_all [polynomial_shift_1, polynomial_left_scalar_action]
@@ -2187,9 +2296,6 @@ theorem left_scalar_action_zero (R : ring k) [BEq k] [LawfulBEq k] (a : List k) 
   apply trim_is_nil_if_all_zero
   rw [polynomial_left_scalar_action]
   simp
-  intro x hx
-  rw [mul_zero_any_is_zero]
-
 
 theorem mul_polynomial_is_associative (R : ring k) [BEq k] [LawfulBEq k]
   (a : List k) (b : List k) (c : List k) :
@@ -2235,6 +2341,17 @@ theorem mul_polynomial_is_associative (R : ring k) [BEq k] [LawfulBEq k]
     rw [add_polynomial_zero_left_0]
     rw [trim_polynomial_list_idempotent]
 
+def reduced_polynomial_ring_example (k : Type u) [R : ring k] [BEq k] [LawfulBEq k] : reduced_polynomial_ring_data_layout k :=
+  {
+    add := add_reduced_polynomial
+    mul := mul_reduced_polynomial
+    add_inverse (a : reduced_polynomial k) := {
+      value := a.value.map R.add_inverse
+      is_reduced := by
+        apply add_inverse_is_reduced k a.value
+        apply a.is_reduced
+    }
+  }
 
 instance polynomial_ring
   (k : Type u) [R : ring k] [BEq k] [LawfulBEq k]: ring (reduced_polynomial k) :=
@@ -2296,7 +2413,7 @@ instance polynomial_ring
       apply ext_direct
       simp
       rw [a.is_reduced]
-    mul_is_linear := by
+    mul_is_linear_left := by
       intro a b c
       repeat rw [mul_reduced_polynomial]
       repeat rw [add_reduced_polynomial]
@@ -2310,6 +2427,29 @@ instance polynomial_ring
       rw [trim_polynomial_list_idempotent]
       rw [mul_polynomial_respects_trim]
       rw [c.is_reduced]
+    mul_is_linear_right := by
+      intro a b c
+      repeat rw [mul_reduced_polynomial]
+      repeat rw [add_reduced_polynomial]
+      simp
+      repeat rw [add_polynomial_safe]
+      repeat rw [mul_polynomial_safe]
+      rw [mul_polynomial'_symmetric]
+      rw [←a.is_reduced]
+      rw [b.is_reduced]
+      rw [c.is_reduced]
+      rw [mul_polynomial_respects_trim]
+      rw [mul_polynomial_respects_trim]
+      rw [mul_polynomial_is_left_linear]
+      repeat rw [a.is_reduced]
+      rw [add_polynomial_respect_trim]
+      rw [add_polynomial_respect_trim]
+      rw [mul_polynomial'_symmetric]
+      conv =>
+        rhs
+        arg 1
+        arg 2
+        rw [mul_polynomial'_symmetric]
     add_is_assoc := by
       intro a b c
       repeat rw [add_reduced_polynomial]
@@ -2347,6 +2487,294 @@ instance polynomial_ring
       intro a
       simp [add_reduced_polynomial, add_polynomial_safe, a.is_reduced]
   }
+
+theorem polynomial_ring_add {k : Type u} [ring k] [BEq k] [LawfulBEq k] (a b : reduced_polynomial k) :
+  a ⊹ b = add_reduced_polynomial a b := by
+  exact ext_direct k rfl
+
+theorem polynomial_ring_mul {k : Type u} [ring k] [BEq k] [LawfulBEq k] (a b : reduced_polynomial k) :
+  a * b = mul_reduced_polynomial a b := by
+  exact ext_direct k rfl
+
+theorem polynomial_ring_e {k : Type u} [R : ring k] [BEq k] [LawfulBEq k] :
+  (polynomial_ring k).e.value = trim_polynomial_list [R.e]:= by
+  rfl
+
+def eval_polynomial'
+  {base : Type v} [ring base]
+  {target : Type u} [ring target]
+  (eval_x : target) (f : base → target) (a : List base)
+  : target
+  :=
+  match a with
+  | [] => choose_zero.zero
+  | xa :: a' => f xa ⊹ eval_x * (eval_polynomial' eval_x f a')
+
+def eval_polynomial
+  {base : Type v} [ring base]
+  {target : Type u} [ring target]
+  (eval_x : target) (f : ring_hom₁ base target) (a : List base)
+  : target
+  :=
+  match a with
+  | [] => choose_zero.zero
+  | xa :: a' => f.original_function xa ⊹ eval_x * (eval_polynomial eval_x f a')
+
+
+-- set_option trace.Meta.synthInstance true
+
+@[simp]
+theorem eval_polynomial_ignores_trim
+  {base : Type v} [Rb : ring base] [BEq base] [LawfulBEq base]
+  {target : Type u} [Rt : ring target]
+  (eval_x : target) (f : ring_hom₁ base target)
+  (x : List base) :
+  eval_polynomial eval_x f (trim_polynomial_list x) = eval_polynomial eval_x f x
+  := by
+  match x with
+  | [] => simp
+  | xi :: x' =>
+    rw [eval_polynomial]
+    conv =>
+      rhs
+      rw [←eval_polynomial_ignores_trim]
+      rfl
+    rw [←trim_definitions_are_equivalent]
+    rw [trim_polynomial_list']
+    split
+    simp_all [eval_polynomial]
+    rw [trim_singleton]
+    rw [eval_polynomial.eq_def]
+    split
+    simp_all
+    case h_2 q qq qqq =>
+      split at qqq
+      simp_all
+      simp_all [eval_polynomial]
+    rw [eval_polynomial]
+
+theorem eval_polynomial_add
+  {base : Type v} [ring base] [BEq base] [LawfulBEq base]
+  {target : Type u} [ring target]
+  (eval_x : target) (f : ring_hom₁ base target)
+  (x y : List base)
+  : eval_polynomial eval_x f (add_polynomial x y) = (eval_polynomial eval_x f x) ⊹ (eval_polynomial eval_x f y)
+  := by
+  match x, y with
+  | [], [] =>
+    simp [eval_polynomial]
+  | x', [] =>
+    simp [eval_polynomial]
+  | [], y' =>
+    simp [eval_polynomial]
+  | xi :: x', yi :: y'=>
+    rw [eval_polynomial]
+    rw [eval_polynomial]
+    rw [additive_monoid.add_is_assoc]
+    conv =>
+      rhs
+      arg 2
+      arg 2
+      rw [commutative_additive_monoid.add_is_comm]
+    conv =>
+      rhs
+      arg 2
+      rw [←additive_monoid.add_is_assoc]
+    rw [←ring.mul_is_linear_right]
+    rw [←eval_polynomial_add]
+    rw [←additive_monoid.add_is_assoc]
+    rw [commutative_additive_monoid.add_is_comm]
+    rw [←additive_monoid.add_is_assoc]
+    rw [←additive_monoid_hom₁.map_add]
+    rw [←eval_polynomial]
+    rw [commutative_additive_monoid.add_is_comm]
+    rw [add_polynomial_commutes_with_cons]
+
+
+theorem polynomial_left_scalar_action_is_mul
+  {k : Type u} [BEq k] [LawfulBEq k]
+  [A : additive_monoid k] [M : mul k]
+  (s : k) (a : List k) :
+  trim_polynomial_list (polynomial_left_scalar_action s a) = trim_polynomial_list (mul_polynomial' [s] a) := by
+  rw [mul_polynomial']
+  simp [polynomial_shift_1]
+
+theorem polynomial_right_scalar_action_is_mul
+  {k : Type u} [BEq k] [LawfulBEq k]
+  [A : commutative_additive_monoid k] [M : mul k]
+  (a : List k) (s : k) :
+  trim_polynomial_list (polynomial_right_scalar_action a s) = trim_polynomial_list (mul_polynomial' a [s]) := by
+  rw [mul_polynomial'_cons_linear_right]
+  rw [add_polynomial_respect_trim]
+  rw [polynomial_shift_1_respect_trim]
+  simp [polynomial_shift_1]
+
+theorem eval_polynomial_mul
+  {base : Type v} [ring base] [BEq base] [LawfulBEq base]
+  {target : Type u} [ring target]
+  (eval_x : target) (f : ring_hom₁ base target)
+  (x y : List base)
+  : eval_polynomial eval_x f (mul_polynomial' x y) = (eval_polynomial eval_x f x) * (eval_polynomial eval_x f y)
+  := by
+  match x, y with
+  | [], [] =>
+    simp [eval_polynomial]
+  | x', [] =>
+    simp [eval_polynomial]
+    rw [←eval_polynomial_ignores_trim]
+    simp [eval_polynomial]
+  | [], y' =>
+    simp [eval_polynomial]
+  | xi :: x', yi :: y'=>
+    rw [eval_polynomial]
+    rw [eval_polynomial]
+
+    rw [ring.mul_is_linear_left]
+    rw [ring.mul_is_linear_right]
+    rw [ring.mul_is_linear_right]
+    conv =>
+      rhs
+      arg 2
+      arg 2
+      arg 2
+      rw [commutative_mul.mul_is_comm]
+    conv =>
+      rhs
+      arg 2
+      arg 2
+      rw [multiplicative_monoid.mul_is_assoc]
+      arg 2
+      rw [←multiplicative_monoid.mul_is_assoc]
+    rw [←eval_polynomial_mul]
+
+    rw [←eval_polynomial_ignores_trim]
+    rw [mul_polynomial'_cons_linear_right]
+    rw [mul_polynomial']
+    rw [polynomial_shift_1]
+    rw [polynomial_shift_1]
+    rw [eval_polynomial_ignores_trim]
+    rw [eval_polynomial_add]
+    rw [eval_polynomial]
+    rw [←eval_polynomial_ignores_trim]
+    rw [polynomial_right_scalar_action_cons_linear_left]
+    rw [eval_polynomial_ignores_trim]
+    rw [eval_polynomial_add]
+    rw [eval_polynomial_add]
+    rw [polynomial_shift_1]
+    simp [eval_polynomial]
+    rw [ring_hom₁.map_mul]
+    rw [ring.mul_is_linear_right]
+    repeat rw [←additive_monoid.add_is_assoc]
+    congr 1
+    repeat rw [additive_monoid.add_is_assoc]
+    congr 1
+    rw [←eval_polynomial_ignores_trim]
+    rw [polynomial_right_scalar_action_is_mul]
+    rw [eval_polynomial_ignores_trim]
+    rw [commutative_additive_monoid.add_is_comm]
+    congr 1
+    rw [←multiplicative_monoid.mul_is_assoc]
+    conv =>
+      rhs
+      arg 1
+      rw [commutative_mul.mul_is_comm]
+    rw [multiplicative_monoid.mul_is_assoc]
+    congr 1
+    rw [←eval_polynomial_ignores_trim]
+    rw [polynomial_left_scalar_action_is_mul]
+    rw [eval_polynomial_ignores_trim]
+    rw [eval_polynomial_mul]
+    simp [eval_polynomial]
+    rw [eval_polynomial_mul]
+    simp [eval_polynomial, multiplicative_monoid.mul_is_assoc]
+    congr 1
+    apply commutative_multiplicative_monoid.mul_is_comm
+    apply add_zero_right
+  termination_by x.length + y.length
+
+
+def eval_polynomial_ring_arrow
+  {base : Type v} [ring base] [BEq base] [LawfulBEq base]
+  {target : Type} [ring target]
+  (f : ring_hom₁ base target) (eval_x : target)
+  : ring_hom₁ (reduced_polynomial base) target :=
+  {
+    original_function (x) := eval_polynomial eval_x f x.value
+    map_add (a b) := by
+      rw [polynomial_ring_add]
+      rw [add_reduced_polynomial]
+      simp_all
+      rw [add_polynomial_safe]
+      rw [←add_polynomial_respect_trim]
+      rw [eval_polynomial_ignores_trim]
+      rw [eval_polynomial_add]
+    map_zero := by
+      simp [eval_polynomial]
+    map_e := by
+      rw [polynomial_ring_e]
+      rw [eval_polynomial_ignores_trim]
+      rw [eval_polynomial]
+      rw [eval_polynomial]
+      simp_all
+      apply f.map_e
+    map_mul := by
+      intro a b
+      rw [polynomial_ring_mul]
+      rw [mul_reduced_polynomial]
+      simp
+      rw [mul_polynomial_safe]
+      simp [eval_polynomial_mul]
+  }
+
+def base_inclusion
+  {base : Type v} [BEq base] [LawfulBEq base] [ring base]
+  (x : base) : reduced_polynomial base :=
+  {
+    value := trim_polynomial_list [x]
+    is_reduced := by exact trim_polynomial_list_idempotent [x]
+  }
+
+def inclusion_base_to_free_algebra
+  {base : Type v} [BEq base] [LawfulBEq base] [ring base]
+  : ring_hom₁ base (reduced_polynomial base)
+  :=
+  {
+    original_function := base_inclusion
+    map_add := by
+      intro a b
+      apply ext_direct
+      simp [
+        base_inclusion, polynomial_ring_add,
+        add_reduced_polynomial, add_polynomial_safe,
+        ←add_polynomial_respect_trim, add_polynomial]
+    map_zero := by
+      simp [base_inclusion]
+      rfl
+    map_e := by
+      simp [base_inclusion]
+      rfl
+    map_mul := by
+      intro a b
+      apply ext_direct
+      simp [base_inclusion, polynomial_ring_mul, mul_reduced_polynomial, mul_polynomial_safe, mul_polynomial_respects_trim,
+      mul_polynomial', polynomial_shift_1, polynomial_left_scalar_action]
+  }
+
+instance free_algebra_over_ring {base : Type v} [ring base] [BEq base] [LawfulBEq base] : free_algebra base (reduced_polynomial base) :=
+  {
+    var := {
+      value := trim_polynomial_list [choose_zero.zero, choose_e.e]
+      is_reduced := by apply trim_polynomial_list_idempotent
+    }
+    induced_map f fx := eval_polynomial_ring_arrow f fx
+    induced_map_is_valid := by
+      intro target target_ring f fx
+      rw [eval_polynomial_ring_arrow]
+      simp [eval_polynomial]
+      rw [f.map_e]
+      simp
+  }
+
 
 
 -- @[reducible]
@@ -2387,11 +2815,13 @@ instance Z : ring_to_string Int := {
   add_zero_left := by simp
   mul_e_right := by simp
   add_zero_right := by simp
-  mul_is_linear :=
+  mul_is_linear_left :=
     by
-    simp
     intro a b c
     apply Int.add_mul
+  mul_is_linear_right := by
+    intro a b c
+    apply Int.mul_add
 }
 
 
@@ -2401,7 +2831,7 @@ class polynomials_with_string_representation
   -- base : reduced_polynomial k
   -- var := X
 
-@[reducible]
+@[reducible, simp]
 def silly_convert {k : Type u} [BEq k] [ring k] [LawfulBEq k] [choose_zero k] [ToString k] (x : reduced_polynomial k) (X : String) : polynomials_with_string_representation k X :=
   {
     value := x.value
@@ -2517,14 +2947,12 @@ instance polynomials_with_string_representation_are_ring
       simp
       rw [silly_add]
       rw [silly_convert]
-      rw [silly_convert]
-      rw [silly_convert]
       simp
       apply ext_direct_print
       simp
       congr
       apply (polynomial_ring k).add_inverse_is_inverse
-    mul_is_linear := by
+    mul_is_linear_left := by
       intro a b c
       simp
       rw [silly_mul]
@@ -2539,8 +2967,25 @@ instance polynomials_with_string_representation_are_ring
       rw [silly_convert]
       apply ext_direct_print
       simp
-      rw [(polynomial_ring k).mul_is_linear]
+      rw [(polynomial_ring k).mul_is_linear_left]
+    mul_is_linear_right := by
+      intro a b c
+      simp
+      rw [silly_mul]
+      rw [silly_mul]
+      rw [silly_mul]
+      rw [silly_add]
+      rw [silly_add]
+      rw [silly_convert]
+      rw [silly_convert]
+      rw [silly_convert]
+      rw [silly_convert]
+      rw [silly_convert]
+      apply ext_direct_print
+      simp
+      rw [(polynomial_ring k).mul_is_linear_right]
   }
+
 
 def monom_repr {k : Type u}
   [BEq k] [LawfulBEq k] [ToString k]
@@ -2668,9 +3113,102 @@ def mul_xy := (polynomials_with_string_representation_are_ring (polynomial Int v
 @[reducible]
 def q := (p1 ⊹ p2)
 
-def str := to_str q ++ " * " ++ to_str q ++ " * " ++ to_str q ++ "==" ++ to_str ( (q * q) * q )
+def str := to_str q ++ " * " ++ to_str q ++ " * " ++ to_str q ++ " == " ++ to_str ( (q * q) * q )
 
 #eval str
+
+@[reducible]
+def q3 :=  (q * q) * q
+
+@[simp]
+def to_print
+  {base : Type v} [BEq base] [LawfulBEq base] [ring base] [ToString base] (X : String)
+  : ring_hom₁ (reduced_polynomial base) (polynomials_with_string_representation base X)
+  :=
+  {
+    original_function := (silly_convert · X)
+    map_add := by
+      intro a b
+      apply ext_direct_print
+      simp
+    map_zero := by
+      simp
+      rfl
+    map_e := by
+      simp
+      rfl
+    map_mul := by
+      intro a b
+      apply ext_direct_print
+      simp
+  }
+
+@[simp]
+def from_print
+  {base : Type v} [BEq base] [LawfulBEq base] [ring base] [ToString base] (X : String)
+  : ring_hom₁  (polynomials_with_string_representation base X) (reduced_polynomial base)
+  :=
+  {
+    original_function (x) := {
+      value := x.value
+      is_reduced := x.is_reduced
+    }
+    map_add := by
+      intro a b
+      exact ext_direct base rfl
+    map_zero := by
+      exact ext_direct base rfl
+    map_e := by
+      exact ext_direct base rfl
+    map_mul := by
+      intro a b
+      exact ext_direct base rfl
+  }
+
+instance
+  print_polynomial_algebra
+  (base : Type) [ToString base] [ring base] [BEq base] [LawfulBEq base] (X : String)
+  : free_algebra base (polynomials_with_string_representation base X) :=
+  {
+    var := {
+      value := trim_polynomial_list [choose_zero.zero, choose_e.e]
+      is_reduced := by apply trim_polynomial_list_idempotent
+    }
+    induced_map f fx :=
+      compose_ring_hom (from_print X) (free_algebra_over_ring.induced_map f fx)
+    induced_map_is_valid := by
+      intro target target_ring f fx
+      simp
+      exact (free_algebra_over_ring).induced_map_is_valid f fx
+  }
+
+
+
+def base_inclusion_example
+  : ring_hom₁ (polynomial Int var1) (polynomial (polynomial Int var1) var2)
+  := by
+  apply compose_ring_hom inclusion_base_to_free_algebra
+  apply to_print
+
+@[reducible]
+def a := to_print var2 (inclusion_base_to_free_algebra (print_polynomial_algebra Int var1).var)
+@[reducible]
+def b := (print_polynomial_algebra (polynomial Int var1) var2).var
+@[reducible]
+def A := (print_polynomial_algebra (polynomial Int var1) var2)
+
+@[reducible]
+def eval_poly (p : polynomial (polynomial Int var1) var2) (arg : polynomial (polynomial Int var1) var2) :=
+  (A.induced_map base_inclusion_example arg).original_function p
+
+#eval eval_poly (a ⊹ b) (b * (b * b))
+
+@[reducible]
+def evaluated := eval_polynomial q (compose_ring_hom inclusion_base_to_free_algebra (to_print var2)) q3.value
+
+#eval to_str q3 ++ " evaluated at " ++ var2 ++ " = " ++ to_str q ++ " is equal to " ++ to_str evaluated
+
+
 
 def mul_nat_polynomial (a : List Nat) (b : List Nat) := mul_polynomial' a b
 
