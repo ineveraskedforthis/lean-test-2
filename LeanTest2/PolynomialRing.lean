@@ -163,213 +163,11 @@ def mul_poly
 
 infix:90 "*₀" => mul_poly
 
--- def mul_poly'
---   {k : Type u} [Z : choose_zero k] [A : add k] [M : mul k]
---   (a : List k) (b : List k) : List k
---   :=
---   match b with
---   | [] => []
---   | x :: b' =>
---     add_poly
---       (action.right a x)
---       (shift (mul_poly a b'))
-
-
--- @[simp]
--- def trim_opposite {k : Type u} [algebra.choose_zero k] [BEq k] (a : List k) : List k :=
---   (trim_utilities.head (. == algebra.choose_zero.zero) a)
-
--- prefix:100 "↓" => trim_utilities.tail (· == choose_zero.zero)
-
-
--- def respect_trim {k : Type u}  [BEq k] [LawfulBEq k] [Z : choose_zero k] (f : List k → List k)
---   := ∀ a, trim_utilities.tail (· == choose_zero.zero) (f a) = trim_utilities.tail (· == choose_zero.zero) (f (trim_utilities.tail (· == choose_zero.zero) a))
-
--- def respect_trim_2 {k : Type u}  [BEq k] [LawfulBEq k] [Z : choose_zero k] (f : List k → List k → List k)
---   := ∀ a, ∀ b, trim_utilities.tail (· == choose_zero.zero) (f a b) = trim_utilities.tail (· == choose_zero.zero) (f (trim_utilities.tail (· == choose_zero.zero) a) (trim_utilities.tail (· == choose_zero.zero) b))
-
--- def respect_trim_internal {k : Type u}  [BEq k] [LawfulBEq k] [Z : choose_zero k] (f : List k → List k)
---   := ∀ a, trim_opposite (f a) = trim_opposite (f (trim_opposite a))
-
--- theorem append_respects_trim_internal {k : Type u} [BEq k] [LawfulBEq k] [Z : choose_zero k] (a : List k) (x : k)
---   : trim_opposite (a ++ [x]) = trim_opposite ((trim_opposite a) ++ [x])
---   := by
---   simp
---   rw [trim_utilities.]
---   match a with
---   | [] => simp
---   | x :: a' =>
---     simp
---     split
---     · case h_1 hx =>
---       rw [beq_iff_eq] at hx
---       rw [hx]
---       rw [trim_zero_glue_generator_internal]
---       rw [append_respects_trim_internal]
---     · case isFalse hx =>
---       simp
-
-
 theorem add_poly.cons {k : Type u} [BEq k] [LawfulBEq k] [A : add k]
   (xa xb : k) (a b : List k) :
   (A.add xa xb) :: (add_poly a b)
   = (add_poly (xa :: a) (xb :: b)) := by
   rw [add_poly]
-
-
-
--- theorem cons_respects_trim {k : Type u} [BEq k] [LawfulBEq k] [choose_zero k] (x : k) (a : List k)
---   : trim_utilities.tail (· == choose_zero.zero) (x :: a) = trim_utilities.tail (· == choose_zero.zero) (x :: trim_utilities.tail (· == choose_zero.zero) a)
---   := by
-
---   simp [trim_utilities.tail, trim_utilities.tail.idempotent]
-
-
--- theorem trim_zero_all
---   {k : Type u} [BEq k] [LawfulBEq k] [Z : choose_zero k] (a : List k) (ha : a.all (fun x ↦ (x == Z.zero)))
---   : trim_utilities.tail (· == choose_zero.zero) a = []
---   := by
---   match a with
---   | [] => simp
---   | xa :: a' =>
---     rw [cons_respects_trim]
---     have ha' : a'.all (fun x ↦ (x == Z.zero)) := by
---       rw [List.all_cons] at ha
---       simp_all
---       apply ha.right
---     conv =>
---       arg 2
---       arg 1
---       rw [trim_zero_all a' ha']
---     have hxa : xa == Z.zero := by
---       rw [List.all_cons] at ha
---       simp_all
---     rw [eq_of_beq hxa]
---     simp
-
--- theorem trim_internal_helper_not_all_zero
---   {k : Type u} [BEq k] [LawfulBEq k] [Z : choose_zero k]
---   (x : k) (a : List k)
---   (ha : ¬a.all (fun x ↦ x == Z.zero))
---   : trim_leading_zeros_internal (a ++ [x]) = trim_leading_zeros_internal a ++ [x] := by
---   simp at ha
---   match a with
---   | [] =>
---     simp_all
---   | xa :: a' =>
---     conv =>
---       lhs
---       rw [List.cons_append]
---       rw [trim_leading_zeros_internal]
---     if xa = Z.zero then
---       simp_all [trim_internal_helper_not_all_zero]
---     else
---       simp_all [trim_leading_zeros_internal]
-
-
--- theorem trim_internal_helper_all_zero {k : Type u} [BEq k] [LawfulBEq k] [Z : choose_zero k] (x : k) (a : List k)
---   (ha : a.all (fun x ↦ x == Z.zero))
---   : trim_leading_zeros_internal (a ++ [x]) = trim_leading_zeros_internal [x] := by
---   rw [trim_leading_zeros_internal]
---   rw [trim_leading_zeros_internal]
---   if h : x == Z.zero then
---     rw [trim_leading_zeros_internal.eq_def]
---     split
---     · case h_1 =>
---       simp_all
---     · case h_2 q1 q2 q3 q4 =>
---       rw [h]
---       have hq := List.cons_eq_append_iff.mp q4.symm
---       rcases hq with h1 | hq2
---       simp_all [trim_leading_zeros_internal]
---       rcases hq2 with ⟨ a', ⟨ ha'_l, ha'_r⟩ ⟩
---       have ha_f := List.all_eq_true.mp ha
---       have q2_is_zero : q2 == Z.zero := by
---         apply ha_f
---         rw [ha'_l]
---         exact List.mem_cons_self
---       rw [q2_is_zero]
---       rw [ha'_r]
---       rw [trim_internal_helper_all_zero]
---       simp_all [trim_leading_zeros_internal]
---       simp at ha
---       simp
---       intro element
---       intro element_in_a'
---       have a'_sub_a' : a' ⊆ a' := by exact List.subset_def.mpr fun {a} a_1 => a_1
---       have tmp := List.subset_cons_of_subset q2 a'_sub_a'
---       rw [←ha'_l] at tmp
---       apply ha
---       simp_all
---   else
---     rw [trim_leading_zeros_internal.eq_def]
---     split
---     · case h_1 =>
---       simp_all
---     · case h_2 q1 q2 q3 q4 =>
---       simp [h]
---       have hq := List.cons_eq_append_iff.mp q4.symm
---       rcases hq with h1 | hq2
---       simp_all [trim_leading_zeros_internal]
---       rcases hq2 with ⟨ a', ⟨ ha'_l, ha'_r⟩ ⟩
---       have ha_f := List.all_eq_true.mp ha
---       have q2_is_zero : q2 == Z.zero := by
---         apply ha_f
---         rw [ha'_l]
---         exact List.mem_cons_self
---       rw [q2_is_zero]
---       rw [ha'_r]
---       rw [trim_internal_helper_all_zero]
---       simp_all [trim_leading_zeros_internal]
---       simp at ha
---       simp
---       intro element
---       intro element_in_a'
---       have a'_sub_a' : a' ⊆ a' := by exact List.subset_def.mpr fun {a} a_1 => a_1
---       have tmp := List.subset_cons_of_subset q2 a'_sub_a'
---       rw [←ha'_l] at tmp
---       apply ha
---       simp_all
---   termination_by a
-
--- theorem trim_helper_all_zero {k : Type u} [BEq k] [LawfulBEq k] [Z : choose_zero k] (x : k) (a : List k)
---   (ha : a.all (· == choose_zero.zero))
---   : trim_utilities.tail (· == choose_zero.zero) (x :: a) = trim_utilities.tail (· == choose_zero.zero) [x] := by
---   apply trim_utilities.tail.nil_of_all_except_first (· == choose_zero.zero) x a ha
-
-
--- theorem trim_helper_not_all_zero {k : Type u} [BEq k] [LawfulBEq k] [Z : choose_zero k] (x : k) (a : List k)
---   (ha : ¬ a.all (fun x ↦ x == Z.zero))
---   : trim_utilities.tail (· == choose_zero.zero) (x :: a) = x :: trim_utilities.tail (· == choose_zero.zero) a := by
---   apply trim_utilities.tail.ignore_head (· == Z.zero) x a ha
-
--- @[simp]
--- theorem no_leading_zero_after_trimming_leading_zero {k : Type u} [BEq k] [LawfulBEq k]
---   [Z : choose_zero k]
---   (a : List k) (b :List k) (c : k) (h : trim_utilities.tail (· == choose_zero.zero) a = c :: b) :
---   ¬ c = Z.zero := by
---   simp_all
---   apply trim_utilities.
---   rw [trim_leading_zeros_internal.eq_def] at h
---   split at h
---   simp_all
---   split at h
---   apply no_leading_zero_after_trimming_leading_zero
---   assumption
---   simp_all
-
--- theorem reduced_iff_non_zero_tail {k : Type u} [BEq k] [LawfulBEq k] [Z : choose_zero k] (s : k) (a : List k)
---   :  trim_utilities.tail (· == choose_zero.zero) (a ++ [s]) = (a ++ [s]) ↔ ! (s == Z.zero) := by
---   simp
---   constructor
---   · case mp =>
---     intro h
---     have hh := trim_utilities.tail.if_reduced (· == Z.zero) s a h
---     simp_all
---   · case mpr =>
---     intro s_not_zero
---     apply trim_utilities.tail.reduced_if
---     simp_all
 
 
 theorem add_poly.zero_zero {k : Type u} [BEq k] [LawfulBEq k]
@@ -485,13 +283,6 @@ theorem shift.trim
   := by
   rw [shift, shift, trim_utilities.tail.cons]
 
--- theorem add_poly.cons {k : Type u} [A : additive_monoid k] (x y : k) (a b : List k) :
---   (x ⊹ y) :: (add_poly a b) = add_poly (x :: a) (y :: b) := by
---   rw [add_poly]
-
--- set_option diagnostics true
--- set_option trace.profiler true
--- set_option maxHeartbeats 800000
 
 theorem add_poly.trim {k : Type u} [BEq k] [LawfulBEq k] [A : additive_monoid k]
   (a : List k) (b : List k)
@@ -1412,6 +1203,68 @@ instance polynomial_ring
       simp [add_reduced_poly, add_poly_safe, a.is_reduced]
   }
 
+theorem polynomial_ring.identity_is (k : Type u) [R : ring k] [BEq k] [LawfulBEq k] : (polynomial_ring k).e = {
+      value := trim_utilities.tail (· == choose_zero.zero) [R.e]
+      is_reduced := by apply trim_utilities.tail.idempotent
+    } := by rfl
+
+theorem polynomial_ring.zero_is (k : Type u) [R : ring k] [BEq k] [LawfulBEq k] : (polynomial_ring k).zero = {
+      value := []
+      is_reduced := by exact trim_utilities.tail.nil fun x => x == ⟨0⟩
+    } := by rfl
+
+theorem polynomial_ring.zero_value (k : Type u) [R : ring k] [BEq k] [LawfulBEq k] : (⟨0⟩ : (reduced_polynomial k (· == ⟨0⟩))).value = [] := by
+  rfl
+
+
+@[reducible]
+def ring_replace_identity (k : Type u) [R : ring k]
+  (replace_zero : k) (replace_e: k)
+  (h_zero : replace_zero = R.zero)
+  (h_e : replace_e = R.e)
+  : ring_with_fixed_identities k replace_zero replace_e :=
+  {
+    kz_is_zero := h_zero
+    ke_is_e := h_e
+  }
+
+
+instance polynomial_ring_with_fixed_identity
+  (k : Type u) (k_z k_e : k) [R : ring_with_fixed_identities k k_z k_e] [BEq k] [LawfulBEq k]
+  (t_z t_e : (reduced_polynomial k (· == choose_zero.zero)))
+  (h_z : t_z.value = [])
+  (h_e : t_e.value = trim_utilities.tail (· == choose_zero.zero) [R.e])
+  :
+    ring_with_fixed_identities
+    (reduced_polynomial k (· == choose_zero.zero)) t_z t_e
+    -- ({
+    --   value := []
+    --   is_reduced := by apply trim_utilities.tail.nil
+    -- })
+    -- ({
+    --   value := trim_utilities.tail (· == choose_zero.zero) [R.e]
+    --   is_reduced := by apply trim_utilities.tail.idempotent
+    -- })
+  := ring_replace_identity (reduced_polynomial k (· == choose_zero.zero)) t_z t_e (
+    by (exact polynomial_ring.ext_direct_iff.mpr h_z)
+  ) (
+    by
+    apply polynomial_ring.ext_direct_iff.mpr
+    rw [polynomial_ring.identity_is]
+    rw [h_e]
+  )
+
+
+
+  -- {
+  --   kz_is_zero := by
+  --     simp_all
+  --     (expose_names; exact polynomial_ring.ext_direct_iff.mpr h)
+  --   ke_is_e := by
+  --     simp_all
+  --     (expose_names; exact polynomial_ring.ext_direct_iff.mpr h_1)
+  -- }
+
 theorem polynomial_ring_add {k : Type u} [R : ring k] [BEq k] [LawfulBEq k] (a b : reduced_polynomial k (· == R.zero)) :
   a ⊹ b = add_reduced_poly a b := by
   exact ext_direct k (· == R.zero) rfl
@@ -2139,101 +1992,1123 @@ def evaluated := eval_polynomial q (compose_ring_hom inclusion_base_to_free_alge
 
 #eval to_str q3 ++ " evaluated at " ++ var2 ++ " = " ++ to_str q ++ " is equal to " ++ to_str evaluated
 
-
-def mv_polynomial (k : Type u) (n : Nat) : Type u :=
+@[reducible]
+def mv (k : Type u) (n : Nat) : Type u :=
   match n with
   | 0 => k
-  | n + 1 => List (mv_polynomial k n)
+  | n + 1 => List (mv k n)
 
-def mv_polynomial.from_list {k : Type u} {n : Nat} (a : List (mv_polynomial k n)) : mv_polynomial k (n + 1) := a
+@[simp]
+def mv.from_list {k : Type u} {n : Nat} (a : List (mv k n)) : mv k (n + 1) := a
+@[simp]
+def mv.to_list  {k : Type u} {n : Nat} (a : mv k (n + 1)) : List (mv k n) := a
 
-def mv_polynomial.zero (k : Type u) [R : choose_zero k] (n : Nat) : mv_polynomial k n :=
+@[simp]
+def mv.zero (k : Type u) [R : choose_zero k] (n : Nat) : mv k n :=
   match n with
   | 0 => R.zero
   | _ + 1 => []
 
-def mv_polynomial.is_zero {k : Type u} [B : BEq k] [R : choose_zero k] {n : Nat} (a : mv_polynomial k n) : Bool := by
-  match n with
-  | 0 => rw [mv_polynomial] at a; apply a == R.zero
-  | _ + 1 => rw [mv_polynomial] at a; apply a.isEmpty
+-- def (· == ⟨0⟩) {k : Type u} [B : BEq k] [R : choose_zero k] {n : Nat} (a : mv k n) : Bool := by
+--   match n with
+--   | 0 => rw [mv] at a; apply a == R.zero
+--   | _ + 1 => rw [mv] at a; apply a.isEmpty
 
-def mv_polynomial.beq {k : Type u} [B : BEq k] {n : Nat} (a b : mv_polynomial k n) : Bool := by
+@[reducible]
+def mv.beq {k : Type u} [B : BEq k] {n : Nat} (a b : mv k n) : Bool := by
   match n with
   | 0 => apply B.beq a b
   | n + 1 =>
-    let q : BEq (mv_polynomial k n) := ⟨ mv_polynomial.beq ⟩
+    let q : BEq (mv k n) := ⟨ mv.beq ⟩
     apply List.beq a b
 
-instance mv_polynomial.BEq (k : Type u) [B : BEq k] (n : Nat) : BEq (mv_polynomial k n) where
-  beq := mv_polynomial.beq
+instance mv.is_BEq (k : Type u) [B : BEq k] (n : Nat) : BEq (mv k n) where
+  beq := mv.beq
+
+@[reducible]
+def mv.refl_beq  (k : Type u) [B : BEq k] [L : ReflBEq k] (n : Nat) (a : mv k n) : a == a := by
+  match n with
+  | 0 => apply L.rfl
+  | q + 1 =>
+    let prev := mv.refl_beq k q
+
+    simp_all [mv]
+
+    let list_eq : ReflBEq (mv k q) := {
+      rfl := by
+        apply mv.refl_beq k q
+    }
+    have temp : (mv.to_list a) == (mv.to_list a) := by
+      exact ReflBEq.rfl
+
+    apply temp
+
+instance mv.is_ReflBEq (k : Type u) [B : BEq k] [L : ReflBEq k] (n : Nat) : ReflBEq (mv k n) where
+  rfl := by apply mv.refl_beq
+
+@[reducible]
+def mv.eq_of_beq  (k : Type u) [B : BEq k] [L : LawfulBEq k] (n : Nat) (a b : mv k n) (h : a == b) : a = b := by
+  match n with
+  | 0 => apply L.eq_of_beq h
+  | q + 1 =>
+    let prev := mv.eq_of_beq k q
+
+    simp_all [mv]
+
+    let list_eq : LawfulBEq (mv k q) := {
+      eq_of_beq := by
+        apply mv.eq_of_beq k q
+    }
+
+    have temp : (mv.to_list a) == (mv.to_list b) := by
+      apply h
+
+    have temp_2 : (mv.to_list a) = (mv.to_list b) := by
+      apply (List.lawfulBEq_iff.mpr list_eq).eq_of_beq temp
+
+    apply temp_2
+
+instance mv.is_LawfulBEq (k : Type u) [B : BEq k] [L : LawfulBEq k] (n : Nat) : LawfulBEq (mv k n) where
+  eq_of_beq := by apply mv.eq_of_beq
 
 
-def reduce_mv_polynomial {k : Type u} [B : BEq k] [choose_zero k] {n : Nat} (a : mv_polynomial k n) : mv_polynomial k n :=
+def mv.beq_get (k : Type u) [B : BEq k] (n : Nat) (a b : mv k n) :
+  (mv.is_BEq k n).beq a b = mv.beq a b := by
+  rfl
+
+def mv.e (k : Type u) [R : choose_e k] (n : Nat) : mv k n :=
+  match n with
+  | 0 => R.e
+  | q + 1 => [mv.e k q]
+
+instance mv.has_zero (k : Type u) (n : Nat) [Z : choose_zero k] [BEq k] : choose_zero (mv k n)  where
+  zero := mv.zero k n
+
+def mv.trim {k : Type u} [B : BEq k] [choose_zero k] {n : Nat} (a : mv k n) : mv k n :=
   match n with
   | 0 => a
-  | _ + 1 => mv_polynomial.from_list (trim_utilities.tail (mv_polynomial.is_zero) (a.map reduce_mv_polynomial))
+  | _ + 1 => mv.from_list (trim_utilities.tail (· == ⟨0⟩) (a.map mv.trim))
 
-structure reduced_mv_polynomial (k : Type u) [B : BEq k] [choose_zero k] (n : Nat)  where
-  value : mv_polynomial k n
-  is_reduced : reduce_mv_polynomial value = value
+structure mvr (k : Type u) [B : BEq k] [choose_zero k] (n : Nat)  where
+  value : mv k n
+  is_reduced : mv.trim value = value
 
-def reduced_mv_polynomial.is_zero
-  {k : Type u} [B : BEq k] [R : choose_zero k] {n : Nat}
-  (a : reduced_mv_polynomial k n) : Bool :=
-  mv_polynomial.is_zero a.value
+@[simp]
+theorem mv.zero.is_reduced  (k : Type u) (n : Nat) [Z : choose_zero k] [BEq k] :
+  mv.trim (mv.zero k n) = (mv.zero k n) := by
+  match n with
+  | 0 => simp [trim]
+  | q + 1 =>
+    simp [trim]
 
-instance reduced_mv_polynomial.BEq (k : Type u) [B : BEq k] [choose_zero k] (n : Nat)
-  : BEq (reduced_mv_polynomial k n) := {
-    beq (a b : reduced_mv_polynomial k n) := by
-      apply mv_polynomial.beq a.value b.value
+def mvr.zero (k : Type u) (n : Nat) [Z : choose_zero k] [BEq k] : mvr k n := {
+  value := mv.zero k n
+  is_reduced := by apply mv.zero.is_reduced}
+
+theorem mv.zero_is (k : Type u) [Z : choose_zero k] [BEq k] (n : Nat) : (mv.has_zero k n).zero = mv.zero k n := rfl
+
+-- @[reducible]
+instance mvr.has_zero (k : Type u) (n : Nat) [Z : choose_zero k] [BEq k] : choose_zero (mvr k n)  where
+  zero := mvr.zero k n
+
+theorem mvr.zero_is (k : Type u) [Z : choose_zero k] [BEq k] (n : Nat) : (mvr.has_zero k n).zero = mvr.zero k n := rfl
+
+def mv.trim' {k : Type u} [B : BEq k] [choose_zero k] {n : Nat} (a : List (mv k n)) : List (mv k n) :=
+  trim_utilities.tail ((· == ⟨0⟩)) (a.map mv.trim)
+
+def mv.trim'' {k : Type u} [B : BEq k] [choose_zero k] {n : Nat} (a : mv k n) : mv k n :=
+  match n with
+  | 0 => a
+  | _ + 1 =>
+    match a with
+    | [] => []
+    | ha :: ta =>
+      match mv.to_list (mv.trim ta) with
+      | [] => if mv.trim ha == ⟨0⟩ then [] else mv.trim ha :: mv.to_list (mv.trim ta)
+      | _ :: _ => mv.trim ha :: mv.to_list (mv.trim ta)
+
+-- theorem mv.trim_is_mv.trim' {k : Type u} [B : BEq k] [choose_zero k] {n : Nat}  (a : mv k (n + 1))  :
+--   mv.trim a = mv.from_list (mv.trim' ( mv.to_list a )) := by
+--   rfl
+
+theorem mv.trim_is_trim'' {k : Type u} [B : BEq k] [choose_zero k] {n : Nat}  (a : mv k n)  :
+  mv.trim a = mv.trim'' a := by
+  match n with
+  | 0 => simp_all [mv.trim, mv.trim'']
+  | q + 1 =>
+    match a with
+    | [] => simp_all [mv.trim, mv.trim'']
+    | ha :: ta =>
+      rw [mv.trim'']
+      rw [mv.trim]
+      rw [List.map]
+      rw [trim_utilities.tail]
+      split
+      · case h_1 w ww =>
+        rw [mv.trim]
+        rw [ww]
+        simp
+      · case h_2 w ww =>
+        split <;> simp_all
+        · case h_1 z zz =>
+          rw [mv.trim, mv.from_list] at zz
+          contradiction
+        · case h_2 z zz zzz zzzz =>
+          congr
+
+@[simp]
+theorem mv.trim_scalar {k : Type u} [B : BEq k] [choose_zero k] (a : mv k 0)  :
+  mv.trim a = a := by
+  rfl
+
+
+def mvr.beq
+  (k : Type u) [B : BEq k] [choose_zero k] (n : Nat) (a b : mvr k n) := a.value == b.value
+
+instance mvr.is_BEq (k : Type u) [B : BEq k] [choose_zero k] (n : Nat)
+  : BEq (mvr k n) where
+  beq := mvr.beq k n
+
+def mvr.beq_iff (k : Type u) [B : BEq k] [choose_zero k] (n : Nat) (a b : mvr k n)
+  : (a.value == b.value) ↔ a == b := by
+  exact Bool.coe_iff_coe.mpr rfl
+
+
+theorem mv.trim_1_is_trim {k : Type u} [B : BEq k] [L : LawfulBEq k] [Z: choose_zero k] (a : mv k 1)  :
+  mv.trim a = (trim_utilities.tail (· == Z.zero) a) := by
+  match a with
+  | [] => simp_all [mv.trim]
+  | ha :: ta =>
+    have hi := mv.trim_1_is_trim ta
+    have hi' := mv.trim_1_is_trim ta
+    rw [mv.trim] at hi'
+    rw [mv.trim, trim_utilities.tail]
+    simp_all
+    rw [trim_utilities.tail]
+    split <;> split <;> simp_all
+    · case h_1.isTrue w ww www =>
+      apply eq_of_beq
+      apply ReflBEq.rfl
+    · case h_1.isFalse w ww www =>
+      intro kkkk
+      simp_all
+      have refl_eq : (⟨0⟩ : mv k 0) == ⟨0⟩ := ReflBEq.rfl
+      simp_all
+      contradiction
+
+def zero : mv Int 0 := by
+  rw [mv]
+  apply 0
+def test_mv : mv Int 3 := [[[zero]], [], [[zero], [zero], [zero, zero], []], [], []]
+#eval mv.trim test_mv
+
+
+theorem recursive_reduction_is_stronger
+  (k : Type u) [choose_zero k] [BEq k]  (n : Nat) (a : mv k (n + 1)) (h : mv.trim a = a)
+  : trim_utilities.tail (· == ⟨0⟩) (mv.to_list a) = (mv.to_list a) := by
+  rw [mv.to_list]
+  rw [←h]
+  rw [mv.trim]
+  rw [mv.from_list]
+  rw [trim_utilities.tail.idempotent]
+
+
+theorem recursive_reduction_reduces_children
+  (k : Type u) [choose_zero k] [BEq k]  (n : Nat) (a : mv k (n + 1)) (h : mv.trim a = a)
+  : (∀ x ∈ (mv.to_list a), mv.trim x = x) := by
+  intro x hx
+  simp_all
+  match a with
+  | [] =>
+    contradiction
+  | ha :: ta =>
+    rw [mv.trim] at h
+    rw [List.mem_cons] at hx
+    rw [List.map_cons] at h
+    rw [trim_utilities.tail] at h
+    rw [mv.from_list] at h
+    cases hx
+    · case inl q =>
+      split at h
+      · case h_1 w ww =>
+        rw [q]
+        split at h
+        · case isTrue t =>
+          contradiction
+        · case isFalse t =>
+          have wwww := List.cons.inj h
+          apply wwww.left
+      · case h_2 w ww =>
+        rw [q]
+        have wwww := (List.cons.inj h).left
+        apply wwww
+    · case inr q =>
+      split at h
+      · case h_1 w ww =>
+        split at h
+        · case isTrue t =>
+          contradiction
+        · case isFalse t =>
+          have wwww := (List.cons.inj h).right
+          rw [←wwww] at q
+          contradiction
+      · case h_2 w ww =>
+        rcases List.cons.inj h with ⟨w1, w2⟩
+        have hi := recursive_reduction_reduces_children k n ta w2
+        apply hi
+        rw [mv.to_list]
+        apply q
+
+theorem recursive_reduction_reduces_tail
+  (k : Type u) [choose_zero k] [BEq k]  (n : Nat)
+  (a : mv k (n + 1)) (h : mv.trim a = a)
+  (ha : mv k n) (ta : List (mv k n))
+  (a_structure : mv.to_list a = ha :: ta)
+  : (mv.trim ta = (mv.from_list ta)) := by
+  simp_all
+  rw [mv.trim] at h
+  rw [List.map] at h
+  rw [mv.trim]
+  rw [trim_utilities.tail] at h
+  split at h
+  · case h_1 w ww =>
+    rw [ww]
+    split at h
+    · case isTrue g =>
+      simp_all
+    · case isFalse g =>
+      simp_all
+      apply (List.cons.inj h).right
+  · case h_2 w ww =>
+    apply (List.cons.inj h).right
+
+theorem recursive_reduction_reduces_head
+  (k : Type u) [choose_zero k] [BEq k]  (n : Nat)
+  (a : mv k (n + 1)) (h : mv.trim a = a)
+  (ha : mv k n) (ta : List (mv k n))
+  (a_structure : mv.to_list a = ha :: ta)
+  : (mv.trim ha = ha) := by
+  have ha_mem : ha ∈ (ha :: ta) := by exact List.mem_cons_self
+  apply recursive_reduction_reduces_children k n a h ha _
+  rw [a_structure]
+  apply ha_mem
+
+def unwrap_mvr (k : Type u) [choose_zero k] [BEq k] (n : Nat)
+  (a : mvr k (n + 1)) : List (mvr k n) := by
+  rcases a with ⟨ av, hv ⟩
+  match av with
+  | [] => apply []
+  | ha :: ta => apply {
+      value := ha
+      is_reduced := by
+        apply recursive_reduction_reduces_children k n (ha :: ta) hv ha (List.mem_cons_self)
+    } :: (
+      unwrap_mvr k n {
+        value := ta
+        is_reduced := by apply recursive_reduction_reduces_tail k n (ha::ta) hv ha ta (by simp)
+      }
+    )
+  termination_by a.value.length
+
+theorem unwrap_preserves_elements (k : Type u) [choose_zero k] [BEq k] (n : Nat)
+  (a : mvr k (n + 1)) :
+  a.value = (unwrap_mvr k n a).map (mvr.value) := by
+  rcases a with ⟨ av, hv ⟩
+  match av with
+  | [] => simp [unwrap_mvr]
+  | ha :: ta =>
+    rw [unwrap_mvr]
+    simp
+    congr 1
+
+    have q := recursive_reduction_reduces_tail k n (ha :: ta) hv ha ta rfl
+    rw [mv.from_list] at q
+
+    have hi := unwrap_preserves_elements k n {
+      value := ta
+      is_reduced := by apply q
+    }
+    apply hi
+  termination_by a.value.length
+
+
+@[simp]
+theorem trim_zero_mv (k : Type u) [choose_zero k] [BEq k] (n : Nat) :
+  mv.trim (mv.zero k n) = mv.zero k n := by
+  match n with
+  | 0 => simp [mv.trim]
+  | _ + 1 => simp[mv.zero, mv.trim]
+
+theorem unwrap_is_reduced (k : Type u) [choose_zero k] [BEq k] (n : Nat)
+  (a : mvr k (n + 1)) :
+  trim_utilities.tail ((· == ⟨0⟩)) (unwrap_mvr k n a) = (unwrap_mvr k n a)
+  := by
+  match n with
+  | 0 =>
+    rcases a with ⟨ av, hv ⟩
+    match av with
+    | [] =>
+      rw [unwrap_mvr]
+      simp
+    | ha :: ta =>
+      have ta_reduced := recursive_reduction_reduces_tail k 0 (ha::ta) hv ha ta rfl
+      have ha_reduced := recursive_reduction_reduces_head k 0 (ha :: ta) hv ha ta rfl
+      have ta_reduced_weak := recursive_reduction_is_stronger k 0 ta ta_reduced
+      have hi := unwrap_is_reduced k 0  {
+        value := mv.from_list ta
+        is_reduced := ta_reduced
+      }
+      rw[unwrap_mvr]
+      simp_all
+      rw [trim_utilities.tail]
+      simp_all
+      split <;> simp_all
+
+      · case h_1 g gg =>
+        have ggg := unwrap_preserves_elements k 0 {
+          value := mv.from_list ta
+          is_reduced := ta_reduced
+        }
+        simp at ggg
+        rw [gg] at ggg
+        simp_all
+        rw [ggg] at hv
+        simp [mv.trim] at hv
+        apply hv
+  | nn + 1 =>
+    rcases a with ⟨ av, hv ⟩
+    match av with
+    | [] =>
+      rw [unwrap_mvr]
+      simp
+    | ha :: ta =>
+      rw [unwrap_mvr]
+      have ta_reduced := recursive_reduction_reduces_tail k (nn + 1) (ha::ta) hv ha ta rfl
+      have ha_reduced := recursive_reduction_reduces_head k (nn + 1) (ha :: ta) hv ha ta rfl
+      have hi := unwrap_is_reduced k (nn + 1)  {
+        value := mv.from_list ta
+        is_reduced := ta_reduced
+      }
+      simp_all
+      have ha_reduced_weak := recursive_reduction_is_stronger k nn ha ha_reduced
+      have ta_reduced_weak := recursive_reduction_is_stronger k (nn + 1) ta ta_reduced
+
+      rw [trim_utilities.tail]
+      simp_all
+      split <;> simp_all
+
+      case h_1 g gg =>
+        have ggg := unwrap_preserves_elements k (nn + 1) {
+          value := mv.from_list ta
+          is_reduced := ta_reduced
+        }
+        simp at ggg
+        rw [gg] at ggg
+        simp_all
+        rw [ggg] at hv
+
+        rw [mv.trim, List.map_cons, ha_reduced, List.map_nil, mv.from_list, trim_utilities.tail.singleton] at hv
+        split at hv
+        contradiction
+        · case isFalse wwww =>
+          exact eq_false_of_ne_true wwww
+  termination_by a.value.length
+
+def wrap_mvr (k : Type u) [choose_zero k] [BEq k] (n : Nat)
+  (a : reduced_polynomial (mvr k n) ((· == ⟨0⟩)))
+  : mv k (n + 1) := by
+  rcases a with ⟨ va, ha ⟩
+  match va with
+  | [] => apply []
+  | hva :: tva => apply hva.value :: wrap_mvr k n {
+    value := tva
+    is_reduced := by
+      exact trim_utilities.tail.tail_reduced (· == ⟨0⟩) hva tva ha
   }
 
 
 
-
--- def reduced_mv_polynomial.from_reduced_polynomial
---   {k : Type u} [BEq k] [choose_zero k] (n : Nat)
---   (a : reduced_polynomial (reduced_mv_polynomial k n) (reduced_mv_polynomial.is_zero)) :
---   mv_polynomial k (n + 1)
---   := a.value.map (reduced_mv_polynomial.value)
-
--- instance reduced_mv_polynomial.ring (k : Type u) [BEq k] [LawfulBEq k] [ring k] (n : Nat) :
---   ring (reduced_mv_polynomial k n) :=
---   {
---     zero := _
---     add := _
---     add_zero_left := _
---     add_zero_right := _
---     add_is_assoc := _
---     add_is_comm := _
---     e := _
---     mul := _
---     mul_e_right := _
---     mul_e_left := _
---     mul_is_assoc := _
---     mul_is_comm := _
---     add_inverse := _
---     add_inverse_is_inverse := _
---     mul_is_linear_left := _
---     mul_is_linear_right := _
---   }
+theorem wrap_is_nil_if (k : Type u) [choose_zero k] [BEq k] (n : Nat)
+  (a : reduced_polynomial (mvr k n) ((· == ⟨0⟩)))
+  (a' : List (mvr k n))
+  (ha' : a.value = a')
+  (h : wrap_mvr k n a = []) :
+  a.value = [] := by
+  rcases a with ⟨ va, ha ⟩
+  rw [wrap_mvr] at h
+  match va with
+  | [] => rfl
+  | hva :: tva => simp_all
 
 
--- instance  (k : Type u) [BEq k] [LawfulBEq k] [ring k] (n : Nat)
---   : free_algebra (reduced_mv_polynomial k n) (reduced_mv_polynomial k (n + 1)) where
+def wrap_is_reduced (k : Type u) [choose_zero k] [BEq k] (n : Nat)
+  (a : reduced_polynomial (mvr k n) ((· == ⟨0⟩))) :
+  mv.trim (wrap_mvr k n a) = wrap_mvr k n a := by
+  rcases a with ⟨ va, ha ⟩
+  match n, va with
+  | _, [] => simp_all [mv.trim, wrap_mvr]
+  | 0, hva :: tva =>
+    have hi := wrap_is_reduced k 0 {
+      value := tva
+      is_reduced := by exact
+        trim_utilities.tail.tail_reduced (· == ⟨0⟩) hva tva ha
+    }
+    have tva_weak := recursive_reduction_is_stronger k 0 (wrap_mvr k 0 {
+      value := tva
+      is_reduced := by exact
+        trim_utilities.tail.tail_reduced (· == ⟨0⟩) hva tva ha
+    }) hi
+    simp at tva_weak
+    have ha' := ha
+    rw [trim_utilities.tail] at ha'
+    rw [wrap_mvr]
+    simp
+    rw [mv.trim_is_trim'']
+    rw [mv.trim'']
+    rw [hi]
+    simp_all
+    split
+    · case h_1 w ww =>
+      have tva_nil := wrap_is_nil_if k 0 {
+        value := tva
+        is_reduced := by exact
+          trim_utilities.tail.tail_reduced (· == ⟨0⟩) hva tva ha
+      } tva rfl ww
+      simp_all
+      assumption
+    · case h_2 w ww =>
+      rfl
+  | n + 1, hva :: tva =>
+    have hi := wrap_is_reduced k (n + 1) {
+      value := tva
+      is_reduced := by exact
+        trim_utilities.tail.tail_reduced (· == ⟨0⟩) hva tva ha
+    }
+    have tva_weak := recursive_reduction_is_stronger k (n + 1) (wrap_mvr k (n + 1) {
+      value := tva
+      is_reduced := by exact
+        trim_utilities.tail.tail_reduced (· == ⟨0⟩) hva tva ha
+    }) hi
+    have hva_weak := recursive_reduction_is_stronger k n hva.value hva.is_reduced
+    simp at tva_weak hva_weak
+    have ha' := ha
+    rw [trim_utilities.tail] at ha'
+    rw [wrap_mvr]
+    simp
+    rw [mv.trim_is_trim'']
+    rw [mv.trim'']
+
+    rw [hi]
+    simp
+    split
+    · case h_1 w ww =>
+      have tva_nil := wrap_is_nil_if k (n + 1) {
+        value := tva
+        is_reduced := by exact
+          trim_utilities.tail.tail_reduced (· == ⟨0⟩) hva tva ha
+      } tva rfl ww
+      simp at tva_nil
+      rw [ww, hva.is_reduced]
+      simp_all
+      assumption
+    · case h_2 w ww =>
+      rw [hva.is_reduced]
+
+
+def unwrap_is_nil_if(k : Type u) [choose_zero k] [BEq k] (n : Nat)
+  (a : mvr k (n + 1))
+  (a' : List (mv k n))
+  (ha' : a' = a.value)
+  (h : unwrap_mvr k n a = [])
+  : a.value = [] := by
+  rcases a with ⟨va, ha⟩
+  match va with
+  | []  => simp
+  | hva :: tva =>
+    simp at ha'
+    have hi := unwrap_is_nil_if k n {
+      value := tva
+      is_reduced := by
+        apply recursive_reduction_reduces_tail k n (hva :: tva) ha hva tva rfl
+    } tva rfl
+    rw [unwrap_mvr] at h
+    simp_all
+  termination_by a'.length
+  decreasing_by simp_all
+
+
+def mvr_back (k : Type u) [choose_zero k] [BEq k] (n : Nat)
+  (a : reduced_polynomial (mvr k n) ((· == ⟨0⟩)))
+  : mvr k (n + 1) := {
+    value := wrap_mvr k n a
+    is_reduced := by apply wrap_is_reduced
+  }
+
+def mvr_forward
+  (k : Type u) [choose_zero k] [BEq k] (n : Nat) (a : mvr k (n + 1)) :
+  reduced_polynomial (mvr k n) ((· == ⟨0⟩)) :=
+  {
+    value := unwrap_mvr k n a
+    is_reduced := by apply unwrap_is_reduced
+  }
+
+theorem mvr_forward_mvr_back
+  (k : Type u) [choose_zero k] [BEq k] (n : Nat)
+  (a : mvr k (n + 1))
+  (a' : List (mv k n))
+  (h : a' = a.value)
+  :
+  (mvr_back k n (mvr_forward k n a)) = a := by
+  rcases a with ⟨va, ha⟩
+  match va with
+  | [] =>
+    rw [mvr_back, mvr_forward]; simp; rw [wrap_mvr]
+    simp; split <;> simp_all [unwrap_mvr]
+  | hva :: tva =>
+    have hi_tva := mvr_forward_mvr_back k n {
+      value := tva
+      is_reduced := by apply recursive_reduction_reduces_tail k n (hva::tva) ha hva tva (by simp)
+    }
+    rw [mvr_back, mvr_forward]
+    rw [mvr_back, mvr_forward] at hi_tva
+    simp_all
+    rw [wrap_mvr]
+    rw [wrap_mvr] at hi_tva
+    simp_all
+    split <;> simp_all
+    · case h_1 m mm mmm mmmm =>
+      have something_is_nil := unwrap_is_nil_if k n {
+        value := hva :: tva
+        is_reduced := ha
+      } (hva :: tva) rfl mmmm
+      contradiction
+    · case h_2 m mm mmm mmmm w ww www =>
+      simp_all
+      rw [unwrap_mvr] at www
+      simp at www
+      rw [List.cons.injEq]
+      and_intros
+      have adsf := www.left
+      exact
+        (Eq.to_iff
+              (congrFun (congrArg Eq (congrArg mvr.value (id (Eq.symm adsf))))
+                hva)).mpr
+          rfl
+      have dfad := www.right
+      symm at dfad
+      simp_all
+      split at hi_tva
+      symm at hi_tva
+      simp_all; rw [wrap_mvr]
+      simp_all; rw [wrap_mvr]
+      simpa
+  termination_by a'.length
+  decreasing_by simp_all
+
+instance (k : Type u) [ring k] [BEq k] [LawfulBEq k] : ring (mv k 0) := by
+  rw [mv]
+  assumption
+
+theorem mvr_back_mvr_forward (k : Type u) [choose_zero k] [BEq k] (n : Nat)
+  (a : reduced_polynomial (mvr k n) ((· == ⟨0⟩)))
+  (a' : List (mvr k n))
+  (h : a' = a.value) :
+  (mvr_forward k n (mvr_back k n a)) = a := by
+  rcases a with ⟨va, ha⟩
+  match va with
+  | [] =>
+    rw [mvr_back, mvr_forward]; simp; rw [unwrap_mvr]
+    simp; split <;> simp_all [wrap_mvr]
+  | hva :: tva =>
+    have hi_tva := mvr_back_mvr_forward k n {
+      value := tva
+      is_reduced := by exact
+        trim_utilities.tail.tail_reduced (· == ⟨0⟩) hva tva ha
+    } tva rfl
+
+    rw [mvr_back, mvr_forward]
+    rw [mvr_back, mvr_forward] at hi_tva
+    simp_all
+    rw [unwrap_mvr]
+    rw [unwrap_mvr] at hi_tva
+    simp_all
+    split
+    · case h_1 m1 m2 m3 m4 m5 m6 =>
+      simp_all
+      rw [wrap_mvr] at m5
+      simp at m5
+    · case h_2 m1 m2 m3 m4 m5 m6 =>
+      simp_all
+      rw [wrap_mvr] at m5
+      simp at m5
+      rw [List.cons.injEq] at m5
+      have q2 := m5.left
+      have q3 := m5.right
+      and_intros
+      symm at q2
+      simp [q2]
+      symm at q3
+      simp [q3]
+      split at hi_tva <;> simp_all
+      rw [unwrap_mvr]
+      rw [unwrap_mvr]
+      simp_all
+  termination_by a'.length
+  decreasing_by simp_all
+
+
+def mv_rfl (k : Type u) [BEq k] [L : LawfulBEq k] (n : Nat) (a : mv k n) : a == a := by
+  match n with
+  | 0 =>
+    rw [mv] at a
+    apply L.rfl
+  | q + 1 =>
+    rw [mv.beq_get, mv.beq]
+    let rfl_prev : ReflBEq (mv k q) := { rfl := by apply mv_rfl k q }
+    have rfl_next := List.reflBEq_iff.mpr rfl_prev
+    apply rfl_next.rfl
+
+def mv_eq_of_beq (k : Type u) [BEq k] [L : LawfulBEq k] (n : Nat) (a b : mv k n) (h : a == b) : a = b := by
+  match n with
+  | 0 =>
+    rw [mv] at a b
+    apply L.eq_of_beq
+    apply h
+  | q + 1 =>
+    rw [mv.beq_get, mv.beq] at h
+    let rfl_prev : LawfulBEq (mv k q) := {
+      rfl := by apply mv_rfl k q
+      eq_of_beq := by apply mv_eq_of_beq
+    }
+    have rfl_next := List.lawfulBEq_iff.mpr rfl_prev
+    apply rfl_next.eq_of_beq
+    apply h
+
+instance mv_lawful (k : Type u) [BEq k] [LawfulBEq k] (n : Nat) : LawfulBEq (mv k n) where
+  rfl := by
+    intro a
+    apply mv_rfl
+  eq_of_beq := by
+    intro a b
+    apply mv_eq_of_beq
+
+@[reducible]
+def ring_structure_0' (k : Type u) [R : ring k] [BEq k] [LawfulBEq k] : ring (mv k 0) := by
+    rw [mv]
+    apply R
+
+-- set_option diagnostics true
+
+@[reducible]
+def transfer_ring
+  (k : Type u) (k_z : k) (k_e : k) (R : ring_with_fixed_identities k k_z k_e)
+  (t : Type v) (t_z : t) (t_e : t)
+  (forward : t → k)
+  (back : k → t)
+  (hbf : ∀ x : t, back (forward x) = x)
+  (hfb : ∀ x : k, forward (back x) = x)
+  (hz : back k_z = t_z)
+  (he : back k_e = t_e)
+  : ring_with_fixed_identities t (t_z) (t_e) := {
+  zero := back R.zero
+  e := back R.e
+  add x y := back (R.add (forward x) (forward y))
+  add_zero_left := by
+    simp_all
+  add_zero_right := by
+    simp_all
+  add_is_assoc := by
+    intro a b c
+    simp_all
+    rw [R.add_is_assoc]
+  add_is_comm := by
+    intro a b;
+    rw [R.add_is_comm]
+  mul x y := back (R.mul (forward x) (forward y))
+  mul_e_right := by simp_all
+  mul_e_left := by simp_all
+  mul_is_assoc := by
+    intro a b c
+    simp_all
+    rw [R.mul_is_assoc]
+  mul_is_comm := by
+    intro a b;
+    rw [R.mul_is_comm]
+  add_inverse x := back (R.add_inverse (forward x))
+  add_inverse_is_inverse := by
+    intro a
+    simp
+    rw [hfb, R.add_inverse_is_inverse]
+  mul_is_linear_left := by
+    intro a b c;
+    simp_all
+    rw [R.mul_is_linear_left]
+  mul_is_linear_right := by
+    intro a b c;
+    simp_all
+    rw [R.mul_is_linear_right]
+  kz_is_zero := by
+    rw [←hz]
+    congr
+    apply R.kz_is_zero
+  ke_is_e := by
+    rw [←he]
+    congr
+    apply R.ke_is_e
+}
+
+-- set_option diagnostics false
+
+def k_to_mv (k : Type u) [BEq k] [LawfulBEq k] (x : k) : mv k 0 := x
+def mv_to_k (k : Type u) [BEq k] [LawfulBEq k] (x : mv k 0) : k := x
+
+@[reducible]
+def ring_structure_0 (k : Type u) [R : ring k] [BEq k] [LawfulBEq k] :
+  ring_with_fixed_identities (mv k 0) (k_to_mv k R.zero) (k_to_mv k R.e) := by
+  apply transfer_ring k R.zero R.e (ring_has_fixed_identities k) (mv k 0) _ _ (
+    k_to_mv k
+  ) (
+    mv_to_k k
+  ) (
+    by intro x; rfl
+  ) (
+    by intro x; rfl
+  )
+  simp[mv_to_k, k_to_mv]
+  simp[mv_to_k, k_to_mv]
+
+def mvr_to_mv_0 (k : Type u) [R : ring k] [BEq k] [LawfulBEq k] (x : mvr k 0) : mv k 0 := x.value
+def mv_to_mvr_0 (k : Type u) [R : ring k] [BEq k] [LawfulBEq k] (x : mv k 0) : mvr k 0 := {
+  value := x
+  is_reduced := by rw [mv.trim]
+}
+
+@[reducible]
+def ring_structure_0r (k : Type u) [R : ring k] [BEq k] [LawfulBEq k] :
+  ring_with_fixed_identities (mvr k 0) (mv_to_mvr_0 k (mv.zero k 0)) (mv_to_mvr_0 k (mv.e k 0)):= by
+  apply transfer_ring (mv k 0) (ring_structure_0 k).zero (ring_structure_0 k).e (ring_structure_0 k) (mvr k 0) _ _ (
+    mvr_to_mv_0 k
+  ) (
+    mv_to_mvr_0 k
+  ) (
+    by intro x; rfl
+  ) (
+    by intro x; rfl
+  )
+  simp[mv_to_mvr_0, mv.zero]
+  rfl
+  simp[mv_to_mvr_0, mv.e]
+  rfl
 
 
 
--- def var
---   (base : Type) [ring base] [ToString base] [BEq base] [LawfulBEq base]
---   (n : Nat) (i : Nat) : mv_polynomial base (n + 1) := by
+
+def mvr_rfl (k : Type u) [BEq k] [L : LawfulBEq k] [choose_zero k] (n : Nat) (a : mvr k n) : a == a := by
+  apply (mvr.beq_iff k n a a).mp
+  exact mv_rfl k n a.value
+
+theorem mv.trim_idempotent_0 (k : Type u) [Z : choose_zero k] [BEq k] (a : mv k 0) :
+  mv.trim (mv.trim a) = mv.trim a  := by
+  rw [mv.trim]
+
+theorem mv.trim_idempotent_1 (k : Type u) (q : Nat) [Z : choose_zero k] [BEq k] [LawfulBEq k] (a : mv k (q + 1)) :
+  mv.trim (mv.trim a) = mv.trim a := by
+  match q, a with
+  | 0, [] =>
+    simp_all [mv.trim]
+  | 0, ta :: ha =>
+    have hi_n := mv.trim_idempotent_0 k ta
+    have hi_a := mv.trim_idempotent_1 k 0 ha
+    have hi_n' := mv.trim_idempotent_0 k ta
+    have hi_a' := mv.trim_idempotent_1 k 0 ha
+    repeat rw [mv.trim]
+    have help := mv.trim_scalar ta
+    have help_2 := mv.trim_1_is_trim ha
+    have help_2' := mv.trim_1_is_trim ha
+    have help_3' := mv.trim_1_is_trim (trim_utilities.tail (· == Z.zero) ha)
+    repeat rw [mv.trim] at help_2' help_3'
+
+    simp_all
+
+    simp_all [trim_utilities.tail]
+
+    split <;> simp_all
+    split <;> simp_all
+
+    rw [trim_utilities.tail]
+    split
+    · case h_1 w1 w2 w3 w4 =>
+      rw [help_3', trim_utilities.tail.idempotent] at w4
+      contradiction
+    · case h_2 w1 w2 w3 w4 =>
+      rw [help_3', trim_utilities.tail.idempotent] at w4
+      simp_all
+      apply trim_utilities.tail.idempotent
+  | _, [] => simp_all [mv.trim]
+  | q' + 1, ta :: ha =>
+    have hi_n := mv.trim_idempotent_1 k q' ta
+    have hi_a := mv.trim_idempotent_1 k (q' + 1) ha
+    have hi_n' := mv.trim_idempotent_1 k q' ta
+    have hi_a' := mv.trim_idempotent_1 k (q' + 1) ha
+    repeat rw [mv.trim]
+    repeat rw [mv.trim] at hi_a' hi_n'
+
+    simp
+    simp_all [trim_utilities.tail]
+    split
+    split
+    simp_all
+    simp_all
+    · case h_2 w ww =>
+      simp_all [trim_utilities.tail]
+  termination_by (q, a.length)
 
 
+theorem mv.trim_idempotent
+  (k : Type u) (q : Nat) [Z : choose_zero k] [BEq k] [LawfulBEq k]
+  (a : mv k q) : mv.trim (mv.trim a) = mv.trim a := by
+  match q with
+  | 0 => exact mv.trim_idempotent_0 k a
+  | _ + 1 => (expose_names; exact mv.trim_idempotent_1 k n a)
 
 
--- def mul_nat_polynomial (a : List Nat) (b : List Nat) := mul_poly a b
+def mvr_e (k : Type u) (n : Nat)  [Z : choose_zero k] [Z : choose_e k] [BEq k] [LawfulBEq k] : mvr k n := {
+    value := mv.trim (mv.e k n)
+    is_reduced := by apply mv.trim_idempotent
+  }
 
--- #eval convert_polynomial_to_string Nat 0 (trim_utilities.tail (· == choose_zero.zero) (mul_nat_polynomial [1, 2, 1, 0] [1, 2, 1])) var1 0
+theorem mvr_ext
+  (k : Type u) [BEq k] [choose_zero k]
+  (n : Nat)
+  (a b : mvr k n)
+  (h : a.value = b.value)
+  : a = b := by
+  rcases a with ⟨va,ha⟩
+  rcases b with ⟨vb,hb⟩
+  simp_all
 
+
+theorem mvr.eq_iff
+  (k : Type u) [BEq k] [choose_zero k]
+  (n : Nat)
+  (a b : mvr k n) :
+  a.value = b.value ↔ a = b := by
+  rcases a with ⟨va,ha⟩
+  rcases b with ⟨vb,hb⟩
+  simp_all
+
+theorem mvr_ext_inv
+  (k : Type u) [BEq k] [choose_zero k]
+  (n : Nat)
+  (a b : mvr k n)
+  (h : a = b)
+  : a.value = b.value := by
+  rcases a with ⟨va,ha⟩
+  rcases b with ⟨vb,hb⟩
+  simp_all
+
+def mvr_eq_of_beq (k : Type u) [choose_zero k] [BEq k] [L : LawfulBEq k] (n : Nat) (a b : mvr k n) (h : a == b) : a = b := by
+  let www := (mvr.beq_iff k n a b).mpr h
+  have h : a.value = b.value := by
+    exact beq_iff_eq.mp h
+  apply mvr_ext
+  apply h
+
+instance mvr_lawful (k : Type u) [choose_zero k] [BEq k] [LawfulBEq k] (n : Nat) : LawfulBEq (mvr k n) where
+  rfl := by
+    intro a
+    apply mv_rfl
+  eq_of_beq := by
+    intro a b
+    apply mvr_eq_of_beq
+
+
+-- def ring_structure_0r
+-- set_option trace.Meta.synthInstance true
+
+
+theorem reduce_mvr_e_singleton (k : Type u) [R : ring k] [BEq k] [LawfulBEq k] :
+  (↓ₜfun x => x == ⟨0⟩) ((↓ₜ(· == ⟨0⟩)) [mvr_e k 0]) = (↓ₜ(· == ⟨0⟩)) [mvr_e k 0] := by
+  simp [mvr_e, mv.e]
+  rw [apply_ite (trim_utilities.tail _)]
+  simp_all
+
+-- @[reducible]
+-- def mvr. (k : Type u) (r : ring k) [BEq k] [LawfulBEq k] (q : Nat) : mvr k (q + 1) := ⟨0⟩
+
+-- @[reducible]
+-- def ring_structure (k : Type u)
+
+-- (kz : k) (ke : k) [Rk : ring_with_fixed_identities k kz ke]
+
+-- [BEq k] [LawfulBEq k] (n : Nat)
+--   :
+--   ring_with_fixed_identities
+--   (mvr k (n + 1))
+--   (mvr.has_zero k (n + 1)).zero
+--   (mvr_e k (n + 1))
+--   := by
+--   match n with
+--   | 0 =>
+--     let R' : ring_with_fixed_identities (mvr k 0) (mvr.zero k 0) (mvr_e k 0) := ring_structure_0r k
+--     let RX1 := polynomial_ring (mvr k 0)
+--     have QQ : ring_with_fixed_identities (reduced_polynomial (mvr k 0) fun x => x == ⟨0⟩) { value := [], is_reduced := by simp } { value := (↓ₜ(· == ⟨0⟩)) [mvr_e k 0], is_reduced := by exact reduce_mvr_e_singleton k  }
+--     := {
+--       zero := { value := [], is_reduced := by simp }
+--       add := RX1.add
+--       add_zero_left := RX1.add_zero_left
+--       add_zero_right := RX1.add_zero_right
+--       add_is_assoc := RX1.add_is_assoc
+--       add_is_comm := RX1.add_is_comm
+--       e := { value := trim_utilities.tail (· == ⟨0⟩) [⟨1⟩], is_reduced := by exact trim_utilities.tail.idempotent (fun x => x == ⟨0⟩) [⟨1⟩] }
+--       mul := RX1.mul
+--       mul_e_right := RX1.mul_e_right
+--       mul_e_left := RX1.mul_e_left
+--       mul_is_assoc := RX1.mul_is_assoc
+--       mul_is_comm := RX1.mul_is_comm
+--       add_inverse := RX1.add_inverse
+--       add_inverse_is_inverse := RX1.add_inverse_is_inverse
+--       mul_is_linear_left := RX1.mul_is_linear_left
+--       mul_is_linear_right := RX1.mul_is_linear_right
+--       kz_is_zero := by rfl
+--       ke_is_e := by rfl
+--     }
+--     rw [] at QQ
+--     apply transfer_ring
+--       (reduced_polynomial (mvr k 0) (· == ⟨0⟩))
+--       {
+--         value := []
+--         is_reduced := by exact trim_utilities.tail.nil fun x => x == mvr.zero k 0
+--       }
+--       {
+--       value := trim_utilities.tail ((· == ⟨0⟩)) [mvr_e k 0]
+--       is_reduced := by
+--         simp_all [mvr_e, mv.e, trim_utilities.tail, mv.trim]
+--         rw [apply_ite (trim_utilities.tail (· == ⟨0⟩)), trim_utilities.tail, trim_utilities.tail, trim_utilities.tail]
+--         simp_all
+--         split <;> rfl
+--     } QQ _ _ _ (mvr_forward k 0) (mvr_back k 0)
+
+--     exact fun x => mvr_forward_mvr_back k 0 x x.value rfl
+--     exact fun x => mvr_back_mvr_forward k 0 x x.value rfl
+
+--     · case hz =>
+--       rw [mvr_back]
+--       simp [mvr.zero_is, mvr.zero, mv.zero]
+--       rw [wrap_mvr]
+
+--     · case he ww =>
+--       simp_all [mvr_e, mv.e, mvr_back]
+--       split
+--       · case isTrue w =>
+--         rw [wrap_mvr]
+--         simp_all [mv.trim]
+--         have ss := eq_of_beq w
+--         have s := (mvr.eq_iff k 0 _ _).mpr ss
+--         simp at s
+--         apply s
+--       · case isFalse w =>
+--         rw [Bool.not_eq_true] at w
+--         have temp := not_eq_of_beq_eq_false w
+--         simp_all [wrap_mvr, mv.trim]
+--         -- rw [Bool.eq_false_iff]
+--         intro s
+--         apply temp
+--         apply (mvr.eq_iff k 0 _ _).mp
+--         apply s
+--   | q + 1 =>
+
+--     let Ri : ring_with_fixed_identities (mvr k (q + 1)) (mvr.zero k (q + 1)) (mvr_e k (q + 1)) := ring_structure k kz ke q
+
+--     -- let R' : ring_with_fixed_identities (mvr k (q + 1)) (z k Rk.toring q) (mvr_e k (q + 1)) := {
+--     --   zero := (z k Rk.toring q)
+--     --   add_zero_left := by
+--     --     intro a
+--     --     let h := Ri.kz_is_zero
+--     --     rw [h]
+--     --     rw [mvr.zero_is]
+
+--     --   add_zero_right := sorry
+--     --   add_is_assoc := sorry
+--     --   add_is_comm := sorry
+--     --   add_inverse := sorry
+--     --   add_inverse_is_inverse := sorry
+--     --   mul_is_linear_left := sorry
+--     --   mul_is_linear_right := sorry
+--     -- }
+
+--     let R_original := polynomial_ring (mvr k (q + 1))
+--     -- HERE I WANT TO PUT R_original INTO R
+--     -- let sss := @choose_zero.zero (mvr k (q + 1)) ({ value := [], is_reduced := sorry }).tochoose_zero : mvr k (q + 1)
+--     let R : ring (reduced_polynomial (mvr k (q + 1)) (· == (mvr.has_zero k (q + 1)).zero)) := R_original
+
+--     let QQ :
+--       ring_with_fixed_identities
+--       (reduced_polynomial (mvr k (q + 1)) (· == ⟨0⟩))
+--       { value := [], is_reduced := by exact trim_utilities.tail.nil (· == ⟨0⟩) }
+--       { value := (↓ₜ(· == ⟨0⟩)) [mvr_e k (q + 1)], is_reduced := by exact trim_utilities.tail.idempotent (· == ⟨0⟩) [mvr_e k (q + 1)] } :=
+--     {
+--       zero := R.zero
+--       add := R.add
+--       add_zero_left := R.add_zero_left
+--       add_zero_right := R.add_zero_right
+--       add_is_assoc := R.add_is_assoc
+--       add_is_comm := R.add_is_comm
+--       e := R.e
+--       mul := R.mul
+--       mul_e_right := R.mul_e_right
+--       mul_e_left := R.mul_e_left
+--       mul_is_assoc := R.mul_is_assoc
+--       mul_is_comm := R.mul_is_comm
+--       add_inverse := R.add_inverse
+--       add_inverse_is_inverse := R.add_inverse_is_inverse
+--       mul_is_linear_left := R.mul_is_linear_left
+--       mul_is_linear_right := R.mul_is_linear_right
+--       kz_is_zero := sorry
+--       ke_is_e := sorry
+--     }
+
+
+--     apply transfer_ring
+--       (reduced_polynomial (mvr k (q + 1)) (· == ⟨0⟩))
+--       {
+--         value := []
+--         is_reduced := by exact trim_utilities.tail.nil fun x => x == mvr.zero k (q + 1)
+--       }
+--       {
+--         value := trim_utilities.tail (· == ⟨0⟩) [mvr_e k (q + 1)]
+--         is_reduced := by
+--           exact trim_utilities.tail.idempotent _ [mvr_e k (q + 1)]
+--       }
+--       QQ
+--       _ _ _
+--       (mvr_forward k (q + 1)) (mvr_back k (q + 1))
+
+--     exact fun x => mvr_forward_mvr_back k (q + 1) x x.value rfl
+--     exact fun x => mvr_back_mvr_forward k (q + 1) x x.value rfl
+
+--     · case hz =>
+--       rw [mvr_back]
+--       simp
+--       rw [wrap_mvr]
+
+--     · case he ww =>
+--       simp_all [mvr_e, mv.e, mvr_back]
+--       split
+--       · case isTrue w =>
+--         rw [wrap_mvr]
+--         simp_all [mv.trim]
+--         have ss := eq_of_beq w
+--         have s := (mvr.eq_iff k (q + 1) _ _).mpr ss
+--         simp at s
+--         apply s
+--       · case isFalse w =>
+--         rw [Bool.not_eq_true] at w
+--         have temp := not_eq_of_beq_eq_false w
+--         simp_all [wrap_mvr, mv.trim]
+--         -- rw [Bool.eq_false_iff]
+--         intro s
+--         apply w
+--         split <;> (simp_all; apply w; rfl)
 
 end polynomial_ring

@@ -309,6 +309,16 @@ theorem inverse_respects_mul (R : ring k) (a : k) (b : k)
   apply mul_zero_any_is_zero
 
 
+class ring_with_fixed_identities (k : Type u) (k_z : k) (k_e : k) extends ring k where
+  kz_is_zero : k_z = choose_zero.zero
+  ke_is_e : k_e = choose_e.e
+
+@[reducible]
+def ring_has_fixed_identities (k : Type u) [R : ring k] : ring_with_fixed_identities k R.zero R.e := {
+  kz_is_zero := rfl
+  ke_is_e := rfl
+}
+
 class field k extends ring k where
   mul_inverse : k → k
   mul_inverse_is_inverse : is_left_inverse mul e mul_inverse
