@@ -61,8 +61,8 @@ class Multiplicative (k : Type u) where
 class Pointed_Multiplicative_Identity (k : Type u) where
   e : k
 
-infix:90 "⊹" => Additive.add
-infix:95 "⋆" => Multiplicative.mul
+infixr:90 "⊹" => Additive.add
+infixr:95 "⋆" => Multiplicative.mul
 
 class Commutative_Multiplicative (k : Type u) extends Multiplicative k where
   mul_is_comm (a b) : mul a b = mul b a
@@ -74,6 +74,12 @@ class Additive_Monoid (k : Type u) extends Pointed_Zero k, Additive k where
 
 notation "⟨0⟩" => Pointed_Zero.zero
 notation "⟨1⟩" => Pointed_Multiplicative_Identity.e
+
+class AbelianGroup (k : Type u) extends Additive_Monoid k where
+  add_inverse : k → k
+  add_add_inverse_self : is_left_inverse add zero add_inverse
+
+
 
 class Multiplicative_Monoid (k : Type u) extends Pointed_Multiplicative_Identity k, Multiplicative k where
   mul_any_e (a : k) : mul a e = a

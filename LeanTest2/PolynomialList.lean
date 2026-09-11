@@ -511,7 +511,7 @@ theorem List.reduce_alt' {k : Type u}
   else reduce x :: List.reduce reduce P a
     := by
   simp [List.reduce, trim_utilities.tail];
-  split <;> split <;> simp_all
+  split <;> simp_all <;> split <;> simp_all
 
 theorem List.reduce_singleton {k : Type u}
   (reduce : k → k) (P : k → Bool) (x : k) :
@@ -1497,7 +1497,7 @@ theorem List.convolve_reduce_right
   List.reduce reduce P (convolve (List.reduce reduce P a) (List.reduce reduce P b))
   =
   List.reduce reduce P (convolve a b) := by
-  rw [convolve_reduce_left, convolve_reduce_right]
+    rw [convolve_reduce_left, convolve_reduce_right]
 
 theorem List.action.left.left_associative
   {k : Type u}
@@ -1626,7 +1626,7 @@ theorem List.convolve_assoc
     congr 2
     · case e_a.e_a =>
       rw [action.left.right_associative]
-    · case e_a.e_b =>
+    · case e_b =>
       rw [
         ←reduce_add,
         action.left.zero,
@@ -2055,7 +2055,7 @@ def base_inclusion
     reduced := by rw [(uv.reduce.is_idempotent (·) (· == (⟨0⟩ : base))).idempotent]
   }
 
-def stupidity : ({data := x} : uv k).data = x := by rfl
+theorem stupidity : ({data := x} : uv k).data = x := by rfl
 
 @[simp]
 theorem List.reduce_zero {base : Type v} [BEq base] [LawfulBEq base] [Ring base] :

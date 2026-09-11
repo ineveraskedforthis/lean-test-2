@@ -150,11 +150,11 @@ instance Reduced_Container.is_BEq
   beq := Reduced_Container.beq k reduce
 
 @[simp]
-instance Reduced_Container.beq_rw
+theorem Reduced_Container.beq_rw
   {k : Type u} (reduce : k → k) [BEq k]
   : (Reduced_Container.is_BEq reduce).beq = Reduced_Container.beq k reduce := by rfl
 
-def Reduced_Container.beq_rfl {k : Type u} [BEq k] [R : ReflBEq k] (reduce : k → k)
+theorem Reduced_Container.beq_rfl {k : Type u} [BEq k] [R : ReflBEq k] (reduce : k → k)
   (a : Reduced_Container reduce)
   : (a == a) := by
   simp
