@@ -20,8 +20,12 @@ structure Category where
 attribute [simp] Category.compose_identity_left
 attribute [simp] Category.compose_identity_right
 
+theorem Category.equal_mor (T : Category) (A B C D : T.Obj) (h : A = B) (h' : C = D) : T.Mor A C = T.Mor B D := by
+  simp_all
+
 scoped notation:80 f:80 " ▸" C g:79  => Category.compose C f g
 
+@[ext]
 structure Functor (A B : Category) where
   obj : A.Obj → B.Obj
   mor {a b} (h : A.Mor a b) : B.Mor (obj a) (obj b)
@@ -29,17 +33,68 @@ structure Functor (A B : Category) where
   mor_compose : mor (A.compose h k) = B.compose (mor h) (mor k)
   mor_identity : mor (A.compose_identity a) = B.compose_identity (obj a)
 
--- ↻
+infix:120 "⥤" => Functor
+
+theorem Functor.ext'
+    (F G : Functor A B)
+    (h_obj : ∀ a, F.obj a = G.obj a)
+    (h_mor : ∀ a b (f : A.Mor a b), HEq (F.mor f) (G.mor f)) :
+    F = G
+:= by
+  cases F with | mk Fo Fm Fc Fi =>
+  cases G with | mk Go Gm Gc Gi =>
+  have ho : Fo = Go := funext h_obj
+  subst ho
+  ext <;> simp
+  funext a b f
+  apply eq_of_heq
+  apply h_mor
+
 
 attribute [simp] Functor.mor_identity
 
 infix:100 " ↻ " => Functor.mor
 
+@[ext]
 structure Transformation (F G : Functor A B) where
   data (x : A.Obj) : B.Mor (F.obj x) (G.obj x)
   naturality {a b : A.Obj} (f : A.Mor a b) : B.compose (F.mor f) (data b) = B.compose (data a) (G.mor f)
 
 infix:100 "ₐ " => Transformation.data
+
+theorem Transformation.heq_ext'
+    (S T : Category)
+    (A B A' B' : Functor S T)
+    (F : Transformation A B)
+    (F' : Transformation A' B')
+    (hA : A = A')
+    (hB : B = B')
+    (h : ∀ a, HEq (F.data a) (F'.data a))
+:
+    HEq F F'
+:= by
+  subst hA
+  subst hB
+  cases A with
+  | mk Ao Am Ac Ai
+  cases B with
+  | mk Bo Bm Bc Bi
+  cases F with
+  | mk Fo Fn
+  cases F' with
+  | mk F'o F'n
+  simp_all
+  funext x
+  apply h
+
+
+theorem Transformation.if_eq
+  {A B : Category}
+  {F F' : Functor A B} (h h' : Transformation F F') (both_eq : h = h') (x : A.Obj)
+:
+  h.data x = h'.data x
+:= by
+  exact ((fun a => congrFun a x) ∘ congrArg data) both_eq
 
 
 def FunctorCompose (F : Functor A B) (G : Functor B C) : Functor A C where
@@ -71,6 +126,15 @@ def TransformationCompose
   data x := B.compose (τ.data x) (μ.data x)
   naturality (f) := by rw [←B.compose_assoc, τ.naturality, B.compose_assoc, μ.naturality, ←B.compose_assoc]
 
+theorem TransformationCompose.apply
+  {F G H: Functor A B}
+  (τ : Transformation F G)
+  (μ : Transformation G H)
+  (q : A.Obj)
+  :
+  B.compose (τ.data q) (μ.data q) = (TransformationCompose τ μ).data q
+  := rfl
+
 theorem FunctorActionOnTransformation.compose
   {G H K : Functor A B}
   (τ : Transformation G H)
@@ -97,11 +161,25 @@ by
   simp [TransformationIdentity, FunctorActionOnTransformation]
   rfl
 
+
 def TransformationConsumeFunctor {G H : Functor B C} (F : Functor A B) (τ : Transformation G H)
   : Transformation (F ∘ᶠG) (F ∘ᶠH) where
   data x := τ.data (F.obj x)
   naturality f := by simp [FunctorCompose]; rw [τ.naturality]
 
+theorem TransformationConsumeFunctor.compose
+  {G H K: Functor B C}
+  (F : Functor A B)
+  (τ : Transformation G H)
+  (η : Transformation H K)
+  :
+  TransformationConsumeFunctor F (TransformationCompose τ η)
+  =
+  TransformationCompose (TransformationConsumeFunctor F τ) (TransformationConsumeFunctor F η)
+  :=
+by
+  simp [TransformationConsumeFunctor, TransformationCompose]
+  rfl
 
 
 
@@ -114,6 +192,61 @@ def FunctorCategory (S T : Category) : Category where
   compose_identity_left := by simp [TransformationCompose, TransformationIdentity]
   compose_identity_right := by simp [TransformationCompose, TransformationIdentity]
   compose_assoc (s t u) := by simp [TransformationCompose, T.compose_assoc]
+
+infix:60 "∶" => FunctorCategory
+
+@[simp, reducible]
+def Identity {C : Category} (X : C.Obj) := C.compose_identity X
+
+-- def Compose {C : A∶B} ()
+
+notation  "𝟙" => Category.compose_identity
+
+notation "𝟙ₜ" => TransformationIdentity
+
+theorem FunctorActionOnTransformation.identity'
+  {G : (A∶B).Obj}
+  (F : B ⥤ C)
+  : FunctorActionOnTransformation (𝟙 _ G) F
+    = 𝟙ₜ (FunctorCompose G F)
+  :=
+by
+  simp [FunctorActionOnTransformation, FunctorCategory]
+  apply FunctorActionOnTransformation.identity
+
+theorem TransformationConsumeFunctor.identity
+  {G : B ⥤ C} (F : A ⥤ B)
+  : TransformationConsumeFunctor F ((B∶C).compose_identity G) = (A∶C).compose_identity (FunctorCompose F G)
+  := rfl
+
+def FunctorComposition (A B C : Category) : Functor (A∶B) ((B∶C)∶(A∶C)) where
+  obj F := {
+    obj G := FunctorCompose F G
+    mor τ := TransformationConsumeFunctor F τ
+    mor_compose := by
+      intro a b f c h
+      apply TransformationConsumeFunctor.compose
+    mor_identity := by
+      intro G
+      apply TransformationConsumeFunctor.identity
+  }
+  mor {S T} τ := {
+    data G := FunctorActionOnTransformation τ G
+    naturality := by
+      intro H K η
+      simp [TransformationConsumeFunctor, FunctorActionOnTransformation, FunctorCategory, TransformationCompose]
+      funext x
+      exact Eq.symm (η.naturality (τ ₐ x))
+  }
+  mor_compose := by
+    intro F G τ H η
+    simp [FunctorCategory, TransformationCompose]
+    funext x
+    apply FunctorActionOnTransformation.compose
+  mor_identity := by
+    intro a
+    conv => lhs; arg 1; intro x; rw [FunctorActionOnTransformation.identity' x]
+    rfl
 
 structure IsInitialObject (T : Category) (obj : T.Obj) where
   mor (a : T.Obj) : T.Mor obj a
@@ -147,59 +280,66 @@ structure AdditiveCategory (T : Category) where
 
 def End (C : Category) := FunctorCategory C C
 
-def DiscreteFunctorCategory (J : Type _) (C : Category) : Category where
-  Obj := (J → C.Obj)
-  Mor a b  := (j : J) → C.Mor (a j) (b j)
-  compose f g j := C.compose (f j) (g j)
-  compose_identity a j := C.compose_identity (a j)
-  compose_assoc s t u := by simp [C.compose_assoc]
-  compose_identity_left := by simp
-  compose_identity_right := by simp
+structure DiscreteMor {J : Type u} (a b : J) : Type u where
+  data : a = b
 
-theorem DiscreteFunctorCategory.compose_def
-  {J : Type _} {C : Category} {a  b c : (DiscreteFunctorCategory J C).Obj}
-  (f : (DiscreteFunctorCategory J C).Mor a b) (g : (DiscreteFunctorCategory J C).Mor b c) :
-  (fun j => C.compose (f j) (g j)) = (DiscreteFunctorCategory J C).compose f g := by rfl
+def Discrete (J : Type _) : Category where
+  Obj := J
+  Mor := DiscreteMor
+  compose a b := {data := Eq.trans a.data b.data}
+  compose_identity a := {data := rfl}
+  compose_identity_left a b := by simp
+  compose_identity_right a b := by simp
+  compose_assoc a b := by simp
 
--- @[simp]
--- def DiscreteFunctorCategory.Obj.ToFunction {J : Type _} {C : Category} (a : (DiscreteFunctorCategory J C).Obj) : J → C.Obj := a
+def ConstantFunctor (A B :Category) (i : B.Obj) : Functor A B where
+  obj x := i
+  mor f := B.compose_identity i
+  mor_identity := rfl
+  mor_compose := by simp
 
--- @[simp]
--- def DiscreteFunctorCategory.Mor.ToFunction
---   {J : Type _} {C : Category} {a b : (DiscreteFunctorCategory J C).Obj}
---   (f : (DiscreteFunctorCategory J C).Mor a b) : (j : J) → C.Mor (a j) (b j) := f
+def ConstantTranformation (A B : Category) {i j : B.Obj} (f : B.Mor i j) : Transformation (ConstantFunctor A B i) (ConstantFunctor A B j) where
+  data x := f
+  naturality := by simp [ConstantFunctor]
 
-
--- def DiscretePointObject (J : Type _) (C : Category) (c : C.Obj) (_ : J) := c
--- def DiscretePointMor (J : Type _) (C : Category) (a b : C.Obj) (j : J) () := c
-
-def Δ (J : Type _) (C : Category) : Functor C (DiscreteFunctorCategory J C) where
-  obj c j := c
-  mor f j := f
+def Δ (J : Category) (C : Category) : Functor C (FunctorCategory J C) where
+  obj c := ConstantFunctor J C c
+  mor f := ConstantTranformation J C f
   mor_compose := by intros; rfl
   mor_identity := by intros; rfl
 
-
-
-structure DiscreteCocone' (J : Type _) (C : Category) (F : (DiscreteFunctorCategory J C).Obj) where
+structure Cocone (J : Category) (C : Category) (F : (FunctorCategory J C).Obj) where
   c : C.Obj
-  data : (DiscreteFunctorCategory J C).Mor F ((Δ J C).obj c)
+  data : (FunctorCategory J C).Mor F ((Δ J C).obj c)
 
-structure DiscreteCocone'Mor (J : Type _) (C : Category) (F : (DiscreteFunctorCategory J C).Obj) (a b : DiscreteCocone' J C F) where
+def TrivialCocone (C : Category) (F : (FunctorCategory (Discrete Unit) C).Obj) : Cocone _ _ F where
+  c := F.obj ()
+  data := {
+    data x := C.compose_identity (F.obj ())
+    naturality := by
+      intro a b f
+      simp [Δ, ConstantFunctor]
+      have p : f = (Discrete Unit).compose_identity () := by rfl
+      have ha : a = () := by rfl
+      have hb : b = () := by rfl
+      subst ha hb
+      rw [p]
+      rw[@F.mor_identity ()]
+  }
+
+structure CoconeMor (J : Category) (C : Category) (F : (FunctorCategory J C).Obj) (a b : Cocone J C F) where
   c : C.Mor a.c b.c
-  valid : (DiscreteFunctorCategory J C).compose a.data ((Δ J C).mor c) = b.data
+  valid : (FunctorCategory J C).compose a.data ((Δ J C).mor c) = b.data
 
-def DiscreteCocone'Category (J : Type _) (C : Category) (F : (DiscreteFunctorCategory J C).Obj) : Category where
-  Obj := DiscreteCocone' J C F
-  Mor := DiscreteCocone'Mor J C F
+def CoconeCategory (J : Category) (C : Category) (F : (FunctorCategory J C).Obj) : Category where
+  Obj := Cocone J C F
+  Mor := CoconeMor J C F
   compose x y := {
     c := C.compose x.c y.c
     valid := by
       have x_valid := x.valid
       have y_valid := y.valid
-      simp_all [Δ, DiscreteFunctorCategory]
-      ext j
-      induction C <;> grind
+      rw [←y_valid, ←x_valid, Category.compose_assoc, Functor.mor_compose]
     }
   compose_identity a := {
     c := C.compose_identity a.c
@@ -209,135 +349,268 @@ def DiscreteCocone'Category (J : Type _) (C : Category) (F : (DiscreteFunctorCat
   compose_identity_right a b := by simp
   compose_assoc a b c := by simp [C.compose_assoc]
 
-structure IsCoproduct  (J : Type _) (C : Category) (Γ : Functor (DiscreteFunctorCategory J C) C) where
-  -- τ (F : (DiscreteFunctorCategory J C).Obj) : (DiscreteFunctorCategory J C).Mor F ((Δ J C).obj (Γ.obj F))
-  τ : (End (DiscreteFunctorCategory J C)).Mor (IdentityFunctor (DiscreteFunctorCategory J C)) (FunctorCompose Γ (Δ J C))
-  uni (F : (DiscreteFunctorCategory J C).Obj)
-    : IsInitialObject (DiscreteCocone'Category J C F) {c :=(Γ.obj F), data := (τ.data F) }
+structure IsColimit  (J : Category) (C : Category) (Γ : Functor (FunctorCategory J C) C) where
+  τ : (End (FunctorCategory J C)).Mor (IdentityFunctor (FunctorCategory J C)) (FunctorCompose Γ (Δ J C))
+  uni (F : (FunctorCategory J C).Obj) : IsInitialObject (CoconeCategory J C F) {c :=(Γ.obj F), data := (τ.data F) }
 
-def SingletonFunctorToObject (C : Category) : Functor (DiscreteFunctorCategory Unit C) C where
-  obj a := a ()
-  mor f := (f ())
+def SingletonFunctorToObject (C : Category) : Functor (FunctorCategory (Discrete Unit) C) C where
+  obj a := a.obj ()
+  mor f := f.data ()
   mor_compose := by intros; rfl
   mor_identity := by intros; rfl
+
+
 
 @[simp]
 theorem SingletonFunctorΔ
   (C : Category) :
-  FunctorCompose (SingletonFunctorToObject C) (Δ Unit C) = IdentityFunctor (DiscreteFunctorCategory Unit C)
-  := by  simp [SingletonFunctorToObject, Δ, FunctorCompose]
+  FunctorCompose
+  (SingletonFunctorToObject C)
+  (Δ (Discrete Unit) C)
+  = IdentityFunctor (FunctorCategory (Discrete Unit) C)
+  :=
+by
+  apply Functor.ext' <;> simp
+  · intro F
+    simp [SingletonFunctorToObject, Δ, FunctorCompose, FunctorCategory, Discrete, ConstantFunctor]
+    cases F with
+    | mk Fo Fm Fc Fi
+    apply Functor.ext' <;> simp
+    intro a b f
+    have h : f = (Discrete Unit).compose_identity a := by rfl
+    rw [h]
+    have h2 := @Fi a
+    rw [h2]
+  · intro a b f
+    simp [SingletonFunctorToObject, Δ, FunctorCompose, FunctorCategory, Discrete, ConstantFunctor, ConstantTranformation]
+    cases f with
+    | mk transform_data naturality
+    simp_all
+    apply Transformation.heq_ext'
+    · apply Functor.ext' <;> simp
+      intro a b f
+      have h : f = (Discrete Unit).compose_identity a := by rfl
+      have ha : a = () := by rfl
+      rw [h, ha]
+      (expose_names; exact Eq.symm a_1.mor_identity)
+    · apply Functor.ext' <;> simp
+      intro a b f
+      have h : f = (Discrete Unit).compose_identity a := by rfl
+      have ha : a = () := by rfl
+      rw [h, ha]
+      (expose_names; exact Eq.symm b_1.mor_identity)
+    · intro a
+      exact heq_of_eq rfl
+
+
 
 @[simp]
 theorem ΔSingletonFunctor
   (C : Category) :
-  FunctorCompose (Δ Unit C) (SingletonFunctorToObject C)  = IdentityFunctor C
-  := by  simp [SingletonFunctorToObject, Δ, FunctorCompose]
+  FunctorCompose (Δ (Discrete Unit) C) (SingletonFunctorToObject C)  = IdentityFunctor C
+:=
+by
+  apply Functor.ext' <;> simp
+  · intro F
+    simp [SingletonFunctorToObject, Δ, FunctorCompose, FunctorCategory, Discrete, ConstantFunctor]
+  · intro a b f
+    simp [SingletonFunctorToObject, Δ, FunctorCompose, FunctorCategory, Discrete, ConstantFunctor, ConstantTranformation]
 
 theorem SingletonCoproduct_RightInverse
-  (C : Category) (Γ : Functor (DiscreteFunctorCategory Unit C) C) (h : IsCoproduct Unit C Γ) (a : (DiscreteFunctorCategory Unit C).Obj)
-  : C.compose (h.τ.data a ()) ((h.uni a).mor {c := a (), data _ := C.compose_identity (a ())}).c = C.compose_identity (a ()) :=
+  (C : Category)
+  (Γ : Functor (FunctorCategory (Discrete Unit) C) C)
+  (h : IsColimit (Discrete Unit) C Γ)
+  (a : Functor (Discrete Unit) C)
+  :
+    C.compose
+    ((h.τ.data a).data ())
+    ((h.uni a).mor (TrivialCocone _ a)).c
+    =
+    C.compose_identity (a.obj ()) :=
 by
-  have h_mor_main_property := ((h.uni a).mor {c := a (), data _ := C.compose_identity (a ())}).valid
-  simp_all [Δ]
-  apply congrFun h_mor_main_property ()
+  have h_mor_main_property := ((h.uni a).mor (TrivialCocone _ a)).valid
+  simp_all [Δ, ConstantTranformation, TrivialCocone, FunctorCategory, TransformationCompose]
+  have t := Transformation.if_eq _ _ h_mor_main_property
+  simp_all
+  apply t
+
 
 theorem SingletonCoproduct_LeftInverse
-  (C : Category) (Γ : Functor (DiscreteFunctorCategory Unit C) C) (h : IsCoproduct Unit C Γ) (a : (DiscreteFunctorCategory Unit C).Obj)
-  : C.compose ((h.uni a).mor {c := a (), data _ := C.compose_identity (a ())}).c (h.τ.data a ()) = C.compose_identity ((Γ.obj a)) :=
+  (C : Category)
+  (Γ : Functor (FunctorCategory (Discrete Unit) C) C)
+  (h : IsColimit (Discrete Unit) C Γ)
+  (a : (FunctorCategory (Discrete Unit) C).Obj)
+  : C.compose
+  ((h.uni a).mor (TrivialCocone _ a)).c
+  ((h.τ.data a).data ())
+  =
+  C.compose_identity ((Γ.obj a)) :=
 by
-  let map_Γa_a := (h.uni a).mor {c := a (), data _ := C.compose_identity (a ())}
+  let map_Γa_a := (h.uni a).mor (TrivialCocone _ a)
   let map_a_Γa
-    : (DiscreteCocone'Category Unit C a).Mor
-      { c := a (), data := fun x => C.compose_identity (a ()) }
+    : (CoconeCategory (Discrete Unit) C a).Mor
+      (TrivialCocone _ a)
       { c := Γ.obj a, data := h.τ ₐ a }
     := {
       c := cast (by
-        simp [Δ, DiscreteFunctorCategory, FunctorCompose];
-      ) (h.τ.data a ())
+        simp [Δ, FunctorCategory, FunctorCompose, ConstantFunctor, TrivialCocone];
+      ) ((h.τ.data a).data ())
       valid := by
-        simp [DiscreteFunctorCategory, Δ, cast]
-        funext j
+        simp [FunctorCategory, Δ, cast, ConstantTranformation, TrivialCocone, TransformationCompose, ConstantFunctor]
+        ext j
         cases j
-        exact C.compose_identity_left (a PUnit.unit) (Γ.obj a) ((h.τ ₐ a) ())
+        exact C.compose_identity_left (a.obj PUnit.unit) (Γ.obj a) ((h.τ ₐ a)ₐ ())
     }
-  let map_composed := (DiscreteCocone'Category Unit C a).compose map_Γa_a map_a_Γa
-  let cone_Γ : (DiscreteCocone'Category Unit C _).Obj := {c :=(Γ.obj a), data := (h.τ.data a)}
+  let map_composed := (CoconeCategory (Discrete Unit) C a).compose map_Γa_a map_a_Γa
+  let cone_Γ : (CoconeCategory (Discrete Unit) C _).Obj := {c :=(Γ.obj a), data := (h.τ.data a)}
   have cone_Γ_identity := InitialObject.self _ _ (h.uni a)
   have uniqueness := (h.uni a).unique _ map_composed
   have identity_lift :
     C.compose_identity (Γ.obj a)
-    = ((DiscreteCocone'Category Unit C a).compose_identity { c := Γ.obj a, data := h.τ ₐ a }).c := by rfl
+    = ((CoconeCategory (Discrete Unit) C a).compose_identity { c := Γ.obj a, data := h.τ ₐ a }).c := by rfl
   have compose_lift :
-    C.compose ((h.uni a).mor {c := a (), data _ := C.compose_identity (a ())}).c (h.τ.data a ())
+    C.compose ((h.uni a).mor (TrivialCocone _ a)).c ((h.τ.data a).data ())
     = map_composed.c := by rfl
   rw [identity_lift, ←cone_Γ_identity, compose_lift, uniqueness]
 
-def Switch'
-  {J : Type _}
-  {Domain Codomain : Category}
+def Switch
+  {J Domain Codomain : Category}
   : Functor
-    (DiscreteFunctorCategory J (FunctorCategory Domain Codomain))
-    (FunctorCategory Domain (DiscreteFunctorCategory J  Codomain))
+    (FunctorCategory J (FunctorCategory Domain Codomain))
+    (FunctorCategory Domain (FunctorCategory J  Codomain))
 where
   obj x := {
-    obj a j:= (x j).obj a
-    mor f j := (x j).mor f
+    obj a := {
+      obj b := (x.obj b).obj a,
+      mor f := (x.mor f).data a
+      mor_compose := by
+        intro q w f e g
+        simp [x.mor_compose]
+        rfl
+      mor_identity := by
+        intro q
+        rw [x.mor_identity]
+        rfl
+    }
+    mor f := {
+      data b := (x.obj b).mor f
+      naturality := by
+        intro q w s
+        simp
+        exact Eq.symm ((x ↻ s).naturality f)
+    }
     mor_compose := by
       intro a b f_ab c f_bc
-      simp [DiscreteFunctorCategory]
-      conv =>        lhs;        intro j;        simp [(x j).mor_compose]
+      simp [FunctorCategory, TransformationCompose]
+      funext j
+      exact (x.obj j).mor_compose
     mor_identity := by
       intro obj
-      simp [DiscreteFunctorCategory]
-      conv => lhs; intro j; simp [(x j).mor_identity]
+      simp [FunctorCategory, TransformationIdentity]
   }
-  mor ε  := {
-    data a := fun j => (ε j).data a
-    naturality f := by
-      simp [DiscreteFunctorCategory]
-      conv => lhs; intro j; rw [(ε j).naturality]
+  mor {a b} ε  := {
+    data q := {
+      data i := (ε.data i).data q
+      naturality := by
+        intro i j s
+        have ε_nat := ε.naturality s
+        simp
+        rw [TransformationCompose.apply (a.mor s) (ε.data j) q]
+        rw [TransformationCompose.apply (ε.data i) (b.mor s) q]
+        simp [FunctorCategory] at ε_nat
+        rw [ε_nat]
+    }
+    naturality := by
+      intro i j s
+      simp [FunctorCategory]
+      ext k
+      simp [TransformationCompose]
+      exact (ε ₐ k).naturality s
   }
   mor_compose := by
     intro a b f c h
-    simp [DiscreteFunctorCategory, FunctorCategory, TransformationCompose]
+    simp [FunctorCategory, FunctorCategory, TransformationCompose]
   mor_identity := by
     intro a
-    simp [DiscreteFunctorCategory, FunctorCategory, TransformationCompose, TransformationIdentity]
+    simp [FunctorCategory, FunctorCategory, TransformationIdentity]
 
 
-def ExtendFunctor'
-  {J : Type _}
-  (Domain Codomain : Category)
-  (Γ : Functor (DiscreteFunctorCategory J Codomain) Codomain)
+def ExtendFunctor
+  (J Domain Codomain : Category)
+  (Γ : Functor (FunctorCategory J Codomain) Codomain)
   :
-  Functor (DiscreteFunctorCategory J (FunctorCategory Domain Codomain)) (FunctorCategory Domain Codomain)
+  Functor (FunctorCategory J (FunctorCategory Domain Codomain)) (FunctorCategory Domain Codomain)
 where
-  obj x := FunctorCompose (Switch'.obj x) Γ
-  mor ε := FunctorActionOnTransformation (Switch'.mor ε) Γ
+  obj x := FunctorCompose (Switch.obj x) Γ
+  mor ε := FunctorActionOnTransformation (Switch.mor ε) Γ
   mor_compose := by
     intro a b f c h
-    simp [FunctorCategory]
-    rw [←FunctorActionOnTransformation.compose (Switch'.mor f) (Switch'.mor h) Γ]
-    rfl
+    apply FunctorActionOnTransformation.compose (Switch.mor f) (Switch.mor h) Γ
   mor_identity := by
     intro a
-    simp [FunctorCategory]
-    rw [←FunctorActionOnTransformation.identity]
-    rfl
+    apply FunctorActionOnTransformation.identity
 
--- def ExtendCoproduct'
---   {J : Type _}
---   (Domain Codomain : Category)
---   (Γ : Functor (DiscreteFunctorCategory J Codomain) Codomain)
---   (h : IsCoproduct J Codomain Γ)
+def Extend''
+  (J D C : Category)
+  :
+  Functor
+  (D∶(J∶C))
+  (FunctorCategory ((J∶C)∶C) (D∶C))
+  := FunctorComposition D (J∶C) C
+def Extend'''
+  (J D C : Category)
+  :
+  Functor
+  (J∶(D∶C))
+  (FunctorCategory ((J∶C)∶C) (D∶C))
+  := FunctorCompose Switch (FunctorComposition D (J∶C) C)
+def Extend'
+  (J D C : Category)
+  :
+  Functor
+  ((J∶C)∶C)
+  (FunctorCategory (D∶(J∶C)) (D∶C))
+  := Switch.obj (FunctorComposition D (J∶C) C)
+
+def FunctorExtension
+  (J D C : Category)
+  :
+  Functor
+  ((J∶C)∶C)
+  (FunctorCategory (J∶(D∶C)) (D∶C))
+:= Switch.obj (FunctorCompose Switch (FunctorComposition D (J∶C) C))
+
+def EndoExtension
+  (D C : Category)
+  : (C∶C) ⥤ (FunctorCategory (D∶C) (D∶C))
+:= Switch.obj (FunctorComposition D C C)
+
+-- def EndoSwitch
+--   (A B C : Category)
+--   : ((A∶(B∶C))∶(A∶(B∶C))) ⥤ ((B∶(A∶C))∶(B∶(A∶C)))
+-- := sorry
+
+-- def ColimitExtension
+--   (J Domain Codomain : Category)
+--   (Γ : Functor (FunctorCategory J Codomain) Codomain)
+--   (h : IsColimit  J Codomain Γ)
 --   :
---   IsCoproduct J (FunctorCategory Domain Codomain) (ExtendFunctor' Domain Codomain Γ)
+--   IsColimit J (FunctorCategory Domain Codomain) ((FunctorExtension J Domain Codomain).obj Γ)
+-- where
+--   τ := cast _ ((FunctorCompose (EndoExtension (Domain) (J∶Codomain)) (EndoSwitch Domain J Codomain)).mor h.τ)
+
+
+-- def ExtendColimit
+--   (J Domain Codomain : Category)
+--   (Γ : Functor (FunctorCategory J Codomain) Codomain)
+--   (h : IsColimit  J Codomain Γ)
+--   :
+--   IsColimit J (FunctorCategory Domain Codomain) (ExtendFunctor J Domain Codomain Γ)
 -- where
 --   τ := {
---     data x j := cast _ (TransformationConsumeFunctor (x j) (cast _ h.τ))
+--     data x := Switch.mor (TransformationConsumeFunctor (Switch.obj x) (h.τ))
 --     naturality := by
 --       intro a b f
---       simp [IdentityFunctor, cast]
 
 --   }
 
@@ -369,7 +642,7 @@ def T' := End T
 variable (ι : NaturalFamily T)
 variable (ι' : GoodNaturalFamily T)
 
-variable (Γ : Functor (DiscreteFunctorCategory Unit T) T) (hΓ : IsCoproduct Unit T Γ)
+-- variable (Γ : Functor (FunctorCategory Unit T) T) (hΓ : IsCoproduct Unit T Γ)
 
 def Start := ι.f
 
@@ -380,7 +653,7 @@ theorem ImportantEquality (i j : Nat)  :
   := by grind only [Category.compose_assoc, T'.eq_def, GoodNaturalFamily.good]
 
 
-def NaturalFamilyFunctor : (DiscreteFunctorCategory Nat (End T)).Obj := ι.F
+-- def NaturalFamilyFunctor : (FunctorCategory Nat (End T)).Obj := ι.F
 
 -- def NaturalFamilyShift
 
