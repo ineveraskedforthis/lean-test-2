@@ -2,10 +2,10 @@ import LeanTest2.Algebra
 
 namespace Category
 
-universe u v w
+universe u v w u' v' w'
 
 
-structure Category where
+structure Category : Type max (u + 1) (v + 1) where
   Obj : Type u
   Mor : Obj → Obj → Type v
   compose {a b c : Obj} (x : Mor a b) (y : Mor b c) : Mor a c
@@ -26,7 +26,7 @@ theorem Category.equal_mor (T : Category) (A B C D : T.Obj) (h : A = B) (h' : C 
 scoped notation:80 f:80 " ▸" C g:79  => Category.compose C f g
 
 @[ext]
-structure Functor (A B : Category) where
+structure Functor (A : Category.{u, v}) (B : Category.{u', v'}) : Type max v' u' u v where
   obj : A.Obj → B.Obj
   mor {a b} (h : A.Mor a b) : B.Mor (obj a) (obj b)
 
@@ -34,6 +34,7 @@ structure Functor (A B : Category) where
   mor_identity : mor (A.compose_identity a) = B.compose_identity (obj a)
 
 infix:120 "⥤" => Functor
+
 
 theorem Functor.ext'
     (F G : Functor A B)
@@ -56,7 +57,7 @@ attribute [simp] Functor.mor_identity
 infix:100 " ↻ " => Functor.mor
 
 @[ext]
-structure Transformation (F G : Functor A B) where
+structure Transformation (F G : Functor.{u, v, u', v'} A B) : Type max u' v' u v where
   data (x : A.Obj) : B.Mor (F.obj x) (G.obj x)
   naturality {a b : A.Obj} (f : A.Mor a b) : B.compose (F.mor f) (data b) = B.compose (data a) (G.mor f)
 
@@ -151,6 +152,7 @@ def TransformationIdentity (F : Functor A B) : Transformation F F where
   data x := B.compose_identity (F.obj x)
   naturality := by simp
 
+@[simp]
 theorem FunctorActionOnTransformation.identity
   {G : Functor A B}
   (F : Functor B C)
@@ -183,7 +185,7 @@ by
 
 
 
-def FunctorCategory (S T : Category) : Category where
+def FunctorCategory (S : Category.{u, v}) (T : Category.{u', v'}) : Category.{max u v u' v', max u v u' v'} where
   Obj := Functor S T
   Mor (A B) := Transformation A B
   compose := TransformationCompose
@@ -200,9 +202,9 @@ def Identity {C : Category} (X : C.Obj) := C.compose_identity X
 
 -- def Compose {C : A∶B} ()
 
-notation  "𝟙" => Category.compose_identity
+notation  " 𝟙" => Category.compose_identity
 
-notation "𝟙ₜ" => TransformationIdentity
+notation " 𝟙ₜ" => TransformationIdentity
 
 theorem FunctorActionOnTransformation.identity'
   {G : (A∶B).Obj}
@@ -248,14 +250,119 @@ def FunctorComposition (A B C : Category) : Functor (A∶B) ((B∶C)∶(A∶C)) 
     conv => lhs; arg 1; intro x; rw [FunctorActionOnTransformation.identity' x]
     rfl
 
+def Associator {F : Functor A B} {G : Functor B C} {H : Functor C D} :
+  Transformation (FunctorCompose (FunctorCompose F G) H) (FunctorCompose F (FunctorCompose G H)) where
+  data q := D.compose_identity _
+  naturality := by
+    intro a b f
+    simp [FunctorCompose]
+
+structure Category2 : Type max max (u + 2) (v + 2) (w+1) where
+  C : Category.{u, v}
+
+  Cell {a b : C.Obj} : C.Mor a b → C.Mor a b → Type w
+
+  cell_id {a b : C.Obj} (f : C.Mor a b) : Cell f f
+
+  vcomp {x y : C.Obj} {a b c : C.Mor x y} (τ : Cell a b) (ε : Cell b c) : Cell a c
+  hcomp {a b c : C.Obj} {f g : C.Mor a b} {h k : C.Mor b c} : Cell f g → Cell h k → Cell (C.compose f h) (C.compose g k)
+  whisker_arg { a b c } {F G : C.Mor b c} (H : C.Mor a b) (τ : Cell F G) : Cell (C.compose H F) (C.compose H G)
+  whisker_apply { a b c } {F G : C.Mor a b} (τ : Cell F G) (H : C.Mor b c) : Cell (C.compose F H) (C.compose G H)
+  vcomp_assoc  (τ : Cell a b) (ε : Cell b c) (η : Cell c d) : vcomp (vcomp τ ε) η = vcomp τ (vcomp ε η)
+  vcomp_id_right {F : C.Mor A B} (τ : Cell G F) : vcomp τ (cell_id F) = τ
+  vcomp_id_left {G : C.Mor A B} (τ : Cell G F) : vcomp (cell_id G) τ = τ
+
+  associator {a b c d : C.Obj} (G : C.Mor a b) (F : C.Mor b c) (H : C.Mor c d)
+    : Cell (C.compose (C.compose G F) H) (C.compose G (C.compose F H))
+  associator_is_id {a b c d : C.Obj} (G : C.Mor a b) (F : C.Mor b c) (H : C.Mor c d)
+    : associator G F H ≍ cell_id (C.compose G (C.compose F H))
+
+  hcomp_assoc {f g : C.Mor a b} {h k : C.Mor b c} {s t : C.Mor c d} (τ : Cell f g) (ε : Cell h k) (η : Cell s t) :
+    vcomp  (hcomp (hcomp τ ε) η) (associator g k t) = vcomp (associator f h s) (hcomp τ (hcomp ε η))
+  hcomp_id_id {f : C.Mor a b} {g : C.Mor b c} : hcomp (cell_id f) (cell_id g) = cell_id (C.compose f g)
+  hcomp_id_left {F G : C.Mor A B} (τ : Cell F G) : hcomp (cell_id (C.compose_identity A)) τ = whisker_arg _ τ
+  hcomp_id_right  {F G : C.Mor A B} (τ : Cell F G) : hcomp τ (cell_id (C.compose_identity B)) = whisker_apply τ _
+
+  interchange : hcomp (vcomp τ ε) (vcomp η μ) = vcomp (hcomp τ η) (hcomp ε μ)
+
+def Cat2 : Category2.{(max (u + 1) (v + 1)), max u v, max u v} where
+  C := {
+    Obj := Category.{u, v}
+    Mor := Functor.{u, v}
+    compose := FunctorCompose
+    compose_identity := IdentityFunctor
+    compose_identity_left := by simp [FunctorCompose]
+    compose_identity_right := by simp [FunctorCompose]
+    compose_assoc := by simp [FunctorCompose]
+  }
+  Cell := Transformation
+  cell_id := TransformationIdentity
+  vcomp := TransformationCompose
+  hcomp
+    {A B C} {F G : Functor A B} {F' G' : Functor B C}
+    (τ : Transformation F G) (ε : Transformation F' G')
+    := TransformationCompose (FunctorActionOnTransformation τ F') (TransformationConsumeFunctor G ε)
+  whisker_arg := TransformationConsumeFunctor
+  whisker_apply := FunctorActionOnTransformation
+
+  associator G F H := Associator
+  associator_is_id := by
+    intro a b c d G F H
+    simp [Associator]
+    apply Transformation.heq_ext' <;> try rfl
+    intro object
+    rfl
+
+  vcomp_assoc := by
+    intro x y f b c d τ ε η
+    simp [TransformationCompose]
+    funext object
+    apply y.compose_assoc
+  vcomp_id_left := by
+    intro A B F G τ
+    simp [TransformationCompose, TransformationIdentity]
+  vcomp_id_right := by
+    intro A B F G τ
+    simp [TransformationCompose, TransformationIdentity]
+
+  hcomp_assoc := by
+    intro a b c d f g h k s t τ ε η
+    simp [TransformationCompose, Associator, FunctorActionOnTransformation, TransformationConsumeFunctor, FunctorCompose, Functor.mor_compose]
+    funext object
+    exact d.compose_assoc (s ↻ (h ↻ (τ ₐ object))) (s ↻ (ε ₐ g.obj object)) (η ₐ k.obj (g.obj object))
+  hcomp_id_id := by
+    intro a b c f g
+    simp [TransformationCompose, TransformationConsumeFunctor, TransformationIdentity, FunctorActionOnTransformation]
+    ext object
+    exact c.compose_identity_left _ _ _
+  hcomp_id_left := by
+    intro a b c f g
+    simp [TransformationCompose, TransformationConsumeFunctor, TransformationIdentity, FunctorActionOnTransformation]
+    ext object
+    simp
+    exact b.compose_identity_left _ _ _
+  hcomp_id_right := by
+    intro a b c f g
+    simp [TransformationCompose, TransformationConsumeFunctor, TransformationIdentity, FunctorActionOnTransformation]
+    ext object
+    simp
+    exact b.compose_identity_right _ _ _
+
+  interchange := by
+    intro x y z w τ q ε t e r η a μ
+    simp [TransformationCompose, TransformationConsumeFunctor, FunctorActionOnTransformation, Functor.mor_compose, FunctorCompose]
+    ext object
+    simp [t.compose_assoc]
+    congr 1
+    simp [←t.compose_assoc]
+    congr 1
+    exact η.naturality (ε ₐ object)
+
+-- def Composition (C : Cat2.C.Obj) (T : Cat2.C.Obj) (S : Cat2.C.Obj) : ((C∶T)∶((T∶S)∶(C∶S))).Obj := FunctorComposition C T S
+
 structure IsInitialObject (T : Category) (obj : T.Obj) where
   mor (a : T.Obj) : T.Mor obj a
   unique (a : T.Obj) (h : T.Mor obj a) : h = mor a
-
--- structure InitialObject (T : Category) where
---   obj : T.Obj
---   mor (a : T.Obj) : T.Mor obj a
---   unique (a : T.Obj) (h : T.Mor obj a) : h = mor a
 
 theorem InitialObject.iso (T : Category) (a b : T.Obj) (A : IsInitialObject T a) (B : IsInitialObject T b) :
   T.compose (A.mor b) (B.mor a) = T.compose_identity a := by
@@ -302,7 +409,7 @@ def ConstantTranformation (A B : Category) {i j : B.Obj} (f : B.Mor i j) : Trans
   data x := f
   naturality := by simp [ConstantFunctor]
 
-def Δ (J : Category) (C : Category) : Functor C (FunctorCategory J C) where
+def Δ (J : Category.{u, v}) (C : Category.{u', v'}) : Functor C (FunctorCategory J C) where
   obj c := ConstantFunctor J C c
   mor f := ConstantTranformation J C f
   mor_compose := by intros; rfl
@@ -327,7 +434,7 @@ def TrivialCocone (C : Category) (F : (FunctorCategory (Discrete Unit) C).Obj) :
       rw[@F.mor_identity ()]
   }
 
-structure CoconeMor (J : Category) (C : Category) (F : (FunctorCategory J C).Obj) (a b : Cocone J C F) where
+structure CoconeMor (J : Category.{u, v}) (C : Category.{u', v'}) (F : (FunctorCategory J C).Obj) (a b : Cocone J C F) : Type (max (max u v) (max u' v')) where
   c : C.Mor a.c b.c
   valid : (FunctorCategory J C).compose a.data ((Δ J C).mor c) = b.data
 
@@ -475,9 +582,7 @@ by
 
 def Switch
   {J Domain Codomain : Category}
-  : Functor
-    (FunctorCategory J (FunctorCategory Domain Codomain))
-    (FunctorCategory Domain (FunctorCategory J  Codomain))
+  : ( J∶(Domain∶Codomain)) ⥤ (Domain∶(J∶Codomain))
 where
   obj x := {
     obj a := {
