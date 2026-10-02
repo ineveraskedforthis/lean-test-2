@@ -285,6 +285,15 @@ structure Category2 : Type max max (u + 2) (v + 2) (w+1) where
 
   interchange : hcomp (vcomp τ ε) (vcomp η μ) = vcomp (hcomp τ η) (hcomp ε μ)
 
+-- structure Functor2 (S : Category2.{u,v}) (T: Category2.{u', v'}) where
+--   one : Functor S.C T.C
+--   cell  {A B : S.C.Obj} {F G : S.C.Mor A B} : S.Cell F G → T.Cell (one.mor F) (one.mor G)
+
+--   cell_id (F : S.C.Mor A B) : cell (S.cell_id F) = T.cell_id (one.mor F)
+--   cell_vcomp {x y : S.C.Obj} {a b c : S.C.Mor x y} (τ : S.Cell a b) (ε : S.Cell b c) :
+
+
+
 def Cat2 : Category2.{(max (u + 1) (v + 1)), max u v, max u v} where
   C := {
     Obj := Category.{u, v}
@@ -359,6 +368,22 @@ def Cat2 : Category2.{(max (u + 1) (v + 1)), max u v, max u v} where
     exact η.naturality (ε ₐ object)
 
 -- def Composition (C : Cat2.C.Obj) (T : Cat2.C.Obj) (S : Cat2.C.Obj) : ((C∶T)∶((T∶S)∶(C∶S))).Obj := FunctorComposition C T S
+
+-- macro "discharge" : tactic => `(tactic|
+--   (try ext <;> simp [
+--     TransformationCompose,
+--     TransformationIdentity,
+--     FunctorActionOnTransformation,
+--     TransformationConsumeFunctor,
+--     FunctorCompose,
+--     Functor.mor_compose,
+--     Functor.mor_identity,
+--     Cat2.interchange,
+--     Cat2.hcomp_id_left,
+--     Cat2.hcomp_id_right
+--     ] <;> try rfl
+--   )
+-- )
 
 structure IsInitialObject (T : Category) (obj : T.Obj) where
   mor (a : T.Obj) : T.Mor obj a
