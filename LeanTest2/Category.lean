@@ -227,7 +227,26 @@ def Associator {F : Functor A B} {G : Functor B C} {H : Functor C D} :
     intro a b f
     simp [FunctorCompose]
 
-structure Category2 : Type max max (u + 2) (v + 2) (w+1) where
+macro "catsimp" : tactic => `(tactic|
+  (simp [
+      TransformationConsumeFunctor.identity,
+      FunctorActionOnTransformation.identity',
+      Identity,
+      TransformationIdentity,
+      FunctorCategory,
+      TransformationConsumeFunctor,
+      FunctorActionOnTransformation.identity,
+      TransformationCompose,
+      FunctorActionOnTransformation,
+      IdentityFunctor,
+      FunctorCompose,
+      Functor.mor_compose,
+      Associator,
+      Transformation.naturality
+  ] <;> try rfl)
+)
+
+structure Category2' : Type max max (u + 2) (v + 2) (w+1) where
   C : Category.{u, v}
 
   Cell {a b : C.Obj} : C.Mor a b → C.Mor a b → Type w
@@ -258,16 +277,58 @@ structure Category2 : Type max max (u + 2) (v + 2) (w+1) where
   whisker_arg_to_hcomp {a b c : C.Obj} (H : C.Mor a b) {Q W : C.Mor b c} (τ : Cell Q W) : whisker_arg H τ = hcomp (cell_id H) τ
   whisker_apply_to_hcomp   {a b c : C.Obj} {Q W : C.Mor a b} (τ : Cell Q W)  (H : C.Mor b c) : whisker_apply τ H = hcomp τ (cell_id H)
 
--- structure Functor2 (S : Category2.{u,v}) (T: Category2.{u', v'}) where
---   one : Functor S.C T.C
---   cell  {A B : S.C.Obj} {F G : S.C.Mor A B} : S.Cell F G → T.Cell (one.mor F) (one.mor G)
-
---   cell_id (F : S.C.Mor A B) : cell (S.cell_id F) = T.cell_id (one.mor F)
---   cell_vcomp {x y : S.C.Obj} {a b c : S.C.Mor x y} (τ : S.Cell a b) (ε : S.Cell b c) :
 
 
 
-def Cat2 : Category2.{(max (u + 1) (v + 1)), max u v, max u v} where
+structure Category2 : Type max max (u + 2) (v + 2) (w+1) where
+  C : Category.{u, v}
+
+  Cell {a b : C.Obj} : C.Mor a b → C.Mor a b → Type w
+
+  cell_id {a b : C.Obj} (f : C.Mor a b) : Cell f f
+
+  vcomp {x y : C.Obj} {a b c : C.Mor x y} (τ : Cell a b) (ε : Cell b c) : Cell a c
+  vcomp_assoc  (τ : Cell a b) (ε : Cell b c) (η : Cell c d) : vcomp (vcomp τ ε) η = vcomp τ (vcomp ε η)
+  vcomp_id_right {F : C.Mor A B} (τ : Cell G F) : vcomp τ (cell_id F) = τ
+  vcomp_id_left {G : C.Mor A B} (τ : Cell G F) : vcomp (cell_id G) τ = τ
+
+
+  -- Use functor on the argument of transformation
+  whisker_arg { a b c } {F G : C.Mor b c} (H : C.Mor a b) (τ : Cell F G) : Cell (C.compose H F) (C.compose H G)
+  -- Apply functor to transformation
+  whisker_apply { a b c } {F G : C.Mor a b} (τ : Cell F G) (H : C.Mor b c) : Cell (C.compose F H) (C.compose G H)
+
+  --  id transformation is id tranformation on image of any functor
+  whisker_arg_id { a b c } { f : C.Mor a b } { g : C.Mor b c } : whisker_arg f (cell_id g) = cell_id (C.compose f g)
+  -- Functors map id tranformation to id transformation
+  whisker_apply_id { a b c } { f : C.Mor a b } { g : C.Mor b c } : whisker_apply (cell_id f) g = cell_id (C.compose f g)
+
+  -- Composition of transformations agree on images of functors
+  vcomp_whisker_arg { a b c } { f : C.Mor a b } { g h i : C.Mor b c } ( η : Cell g h ) ( θ : Cell h i ) : vcomp (whisker_arg f η) (whisker_arg f θ) = whisker_arg f (vcomp η θ)
+  -- Functors are functorial on transformations
+  vcomp_whisker_apply  { a b c } { g h i : C.Mor a b } { f : C.Mor b c } ( η : Cell g h ) ( θ : Cell h i ) : vcomp (whisker_apply η f) (whisker_apply θ f) = whisker_apply (vcomp η θ) f
+
+  -- Trivial associator: required because types of functor compositions are not trivailly equal
+  associator {a b c d : C.Obj} (G : C.Mor a b) (F : C.Mor b c) (H : C.Mor c d)
+    : Cell (C.compose (C.compose G F) H) (C.compose G (C.compose F H))
+  associator_is_id {a b c d : C.Obj} (G : C.Mor a b) (F : C.Mor b c) (H : C.Mor c d)
+    : associator G F H ≍ cell_id (C.compose G (C.compose F H))
+
+  -- Associativity of adding functors to arguments of natural transformation
+  whisker_arg_assoc { a b c d } { f : C.Mor a b } { g : C.Mor b c } { h i : C.Mor c d } ( η : Cell h i)
+    : vcomp (whisker_arg (C.compose f g) η) (associator f g i) = vcomp (associator f g h) (whisker_arg f (whisker_arg g η))
+  -- Associativity of applying functors
+  whisker_apply_assoc { a b c d } { f g : C.Mor a b } { h : C.Mor b c } { i : C.Mor c d } ( η : Cell f g)
+    : vcomp (associator f h i) (whisker_apply η (C.compose h i)) = vcomp (whisker_apply (whisker_apply η h) i) (associator g h i)
+  -- Functors applied to the argument and to the natural transformation itself do not interfere with each other
+  whisker_assoc { a b c d } { f : C.Mor a b } { g h : C.Mor b c } { i : C.Mor c d } ( η : Cell g h )
+    : vcomp (associator f g i) (whisker_arg f (whisker_apply η i)) = vcomp (whisker_apply (whisker_arg f η) i) (associator f h i)
+
+  --  Cells are natural transformations and commute between each other
+  cell_natural { a b c } { f g : C.Mor a b} { h i : C.Mor b c } ( η : Cell f g ) ( θ : Cell h i )
+    : vcomp (whisker_apply η h) (whisker_arg g θ) = vcomp (whisker_arg f θ) (whisker_apply η i)
+
+def Cat2' : Category2'.{(max (u + 1) (v + 1)), max u v, max u v} where
   C := {
     Obj := Category.{u, v}
     Mor := Functor.{u, v, u, v}
@@ -357,6 +418,47 @@ def Cat2 : Category2.{(max (u + 1) (v + 1)), max u v, max u v} where
     (expose_names;
       exact Eq.symm (c.compose_identity_left ((H ∘ᶠ Q).obj X) ((H ∘ᶠ W).obj X) (τ ₐ H.obj X)))
 
+def Cat2 : Category2.{(max (u + 1) (v + 1)), max u v, max u v} where
+  C := {
+    Obj := Category.{u, v}
+    Mor := Functor.{u, v, u, v}
+    compose := FunctorCompose
+    compose_identity := IdentityFunctor
+    compose_identity_left := by simp [FunctorCompose]
+    compose_identity_right := by simp [FunctorCompose]
+    compose_assoc := by simp [FunctorCompose]
+  }
+  Cell := Transformation
+  cell_id := TransformationIdentity
+  vcomp := TransformationCompose
+  whisker_arg := TransformationConsumeFunctor
+  whisker_apply := FunctorActionOnTransformation
+
+  associator G F H := Associator
+  associator_is_id := by
+    intro a b c d G F H
+    simp [Associator]
+    apply Transformation.heq_ext' <;> try rfl
+    intro object
+    rfl
+
+  vcomp_assoc := by
+    intro x y f b c d τ ε η
+    simp [TransformationCompose]
+    funext object
+    apply y.compose_assoc
+  vcomp_id_left := by catsimp
+  vcomp_id_right := by catsimp
+  whisker_arg_id := by catsimp
+  whisker_apply_id := by catsimp
+  vcomp_whisker_arg := by catsimp
+  vcomp_whisker_apply := by catsimp;
+  whisker_arg_assoc := by catsimp
+  whisker_apply_assoc := by catsimp
+  whisker_assoc := by catsimp
+  cell_natural := by catsimp
+
+
 -- def Composition (C : Cat2.C.Obj) (T : Cat2.C.Obj) (S : Cat2.C.Obj) : ((C∶T)∶((T∶S)∶(C∶S))).Obj := FunctorComposition C T S
 
 -- macro "discharge" : tactic => `(tactic|
@@ -392,7 +494,11 @@ def ULiftCategory (A : Cat2.{u, v}.C.Obj) : Cat2.{max u u', max v v'}.C.Obj := {
   compose_assoc := by simp [A.compose_assoc]
 }
 
-
+structure StrictFunctor2 (a : Category2.{u, v, w}) (b : Category2.{u', v', w'}) : Type max (u + 1) (v + 1) (w + 1) (u' + 1) (v' + 1) (w' + 1) where
+  functor1 : Functor a.C b.C
+  cell { α β : a.C.Obj } { f g : a.C.Mor α β } : a.Cell f g → b.Cell (functor1.mor f) (functor1.mor g)
+  cell_vcomp { α β γ : a.C.Obj } { f g h : a.C.Mor α β } { τ : a.Cell f g } { ε : a.Cell g h } :
+    cell (a.vcomp τ ε) = b.vcomp (cell τ) (cell ε)
 
 
 def Exp (A : Cat2.{u, v}.C.Obj) (B : Cat2.{u', v'}.C.Obj) : Cat2.{max u u' v v', max u u' v v'}.C.Obj := {
@@ -409,11 +515,19 @@ def Exp (A : Cat2.{u, v}.C.Obj) (B : Cat2.{u', v'}.C.Obj) : Cat2.{max u u' v v',
 macro "cat2simp" : tactic => `(tactic|
   (simp [
       -- ULiftCategory,
-      Category2.interchange,
-      Category2.vcomp_assoc, Category2.vcomp_id_left, Category2.vcomp_id_right,
-      Category2.hcomp_id_id, Category2.hcomp_id_left, Category2.hcomp_id_right,
-      Category2.whisker_apply_to_hcomp, Category2.whisker_arg_to_hcomp,
-      Category.compose_identity_left, Category.compose_identity_right, Category.compose_assoc
+      Category2.associator_is_id,
+      Category2.cell_natural,
+      Category2.vcomp_assoc,
+      Category2.vcomp_id_left,
+      Category2.vcomp_id_right,
+      Category2.vcomp_whisker_apply,
+      Category2.vcomp_whisker_arg,
+      Category2.whisker_apply_assoc,
+      Category2.whisker_arg_assoc,
+      Category2.whisker_assoc,
+      Category2.whisker_apply_id,
+      Category2.whisker_arg_id,
+      Exp,
   ] <;> try rfl)
 )
 
@@ -449,35 +563,107 @@ def FunctorComposition (A B C : Category) : Functor (A∶B) ((B∶C)∶(A∶C)) 
     conv => lhs; arg 1; intro x; rw [FunctorActionOnTransformation.identity' x]
     rfl
 
--- def FunctorComposition2 (A B C : Cat2.{u, v}.C.Obj) : Cat2.C.Mor ( A ⟶ B)  ((B ⟶ C)⟶ (A ⟶ C)) where
---   obj F := {
---     obj G := ULift.up (Cat2.C.compose F G.down)
---     mor τ :=  ULift.up (Cat2.whisker_arg (F) (ULift.down τ))
---     mor_compose := by intros; rfl
---     mor_identity := by intros; rfl
---   }
---   mor {S T} τ := {
---     data G := ULift.up (Cat2.whisker_apply τ G.down)
---     naturality := by
---       intro H K η;
---       cat2simp;
---       -- simp [ULiftCategory]
---       rw [Cat2.whisker_arg_to_hcomp S η.down]
---       rw [Cat2.whisker_arg_to_hcomp T η.down]
---       rw [Cat2.whisker_apply_to_hcomp τ K.down]
---       rw [Cat2.whisker_apply_to_hcomp τ H.down]
---       simp [ULiftCategory, Exp]
---       rw [Cat2.interchange]
---   }
---   mor_compose := by
---     intro F G τ H η
---     simp [FunctorCategory, TransformationCompose]
---     funext x
---     apply FunctorActionOnTransformation.compose
---   mor_identity := by
---     intro a
---     conv => lhs; arg 1; intro x; rw [FunctorActionOnTransformation.identity' x]
---     rfl
+def FunctorPostComposition (A B C : Category) (F : Functor B C) : Functor (A ∶ B) (A ∶ C) := {
+  obj G := FunctorCompose G F
+  mor τ := FunctorActionOnTransformation τ F
+  mor_compose := by catsimp
+  mor_identity := by catsimp
+}
+
+
+def Hom2 (a : Cat2.{u, v}.C.Obj) : StrictFunctor2 Cat2.{u, v} Cat2.{max u v, max u v} where
+  functor1 := {
+    obj d := FunctorCategory.{u, v, u, v} a d
+    mor f := FunctorPostComposition _ _ _ f
+    mor_compose := by intros; simp[FunctorPostComposition]; catsimp;
+    mor_identity := by intros; simp[FunctorPostComposition]; catsimp;
+  }
+  cell { α β : Cat2.C.Obj } { f g : Cat2.C.Mor α β } τ := {
+    data x := TransformationConsumeFunctor x τ
+    naturality := by
+      intros
+      simp
+      catsimp
+      apply Transformation.ext
+      simp
+      funext
+      apply τ.naturality
+  }
+  cell_vcomp := by intros; simp[FunctorPostComposition]; catsimp;
+
+def TupleCategory (S : Category.{u, v}) (T : Category.{u', v'}) : Category := {
+  Obj := S.Obj × T.Obj
+  Mor a b := (S.Mor a.fst b.fst) × (T.Mor a.snd b.snd)
+  compose f g := ⟨ S.compose f.fst g.fst, T.compose f.snd g.snd ⟩
+  compose_identity a := ⟨ S.compose_identity a.fst, T.compose_identity a.snd ⟩
+  compose_identity_left := by simp
+  compose_identity_right := by simp
+  compose_assoc := by simp [Category.compose_assoc]
+}
+
+def OpCategory (S : Category) : Category := {
+  Obj := S.Obj
+  Mor a b := S.Mor b a
+  compose f g := S.compose g f
+  compose_identity := S.compose_identity
+  compose_identity_left := by simp
+  compose_identity_right :=by simp
+  compose_assoc := by simp[Category.compose_assoc]
+}
+
+-- def TupleCategory2 (S : Category2.{u, v, w}) (T : Category2.{u', v', w'}) : Category2 := {
+--   C := TupleCategory S.C T.C
+--   Cell f g := (S.Cell f.fst g.fst) × (T.Cell f.snd g.snd)
+--   cell_id a := ⟨ (S.cell_id a.fst),  (T.cell_id a.snd) ⟩
+--   vcomp f g := _
+--   vcomp_assoc := _
+--   vcomp_id_right := _
+--   vcomp_id_left := _
+--   whisker_arg := _
+--   whisker_apply := _
+--   whisker_arg_id := _
+--   whisker_apply_id := _
+--   vcomp_whisker_arg := _
+--   vcomp_whisker_apply := _
+--   associator := _
+--   associator_is_id := _
+--   whisker_arg_assoc := _
+--   whisker_apply_assoc := _
+--   whisker_assoc := _
+--   cell_natural := _
+-- }
+
+-- def Cat2.Hom : StrictFunctor2 (TupleCategory (OpCategory a) b) Cat2
+
+structure DiscreteMor {J : Type u} (a b : J) : Type u where
+  data : a = b
+
+def Discrete (J : Type _) : Category where
+  Obj := J
+  Mor := DiscreteMor
+  compose a b := {data := Eq.trans a.data b.data}
+  compose_identity a := {data := rfl}
+  compose_identity_left a b := by simp
+  compose_identity_right a b := by simp
+  compose_assoc a b := by simp
+
+def TypeCat : Category := {
+  Obj := Type _
+  Mor a b := a → b
+  compose f g := g ∘ f
+  compose_identity _ a := a
+  compose_identity_left _ _ _ := rfl
+  compose_identity_right _ _ _ := rfl
+  compose_assoc _ _ _ := rfl
+}
+
+def Category.Hom (S : Category.{u, v}) :
+  Functor (TupleCategory (OpCategory S) S) TypeCat := {
+    obj pair := S.Mor pair.fst pair.snd
+    mor pair := fun input => S.compose (S.compose (pair.fst) input) pair.snd
+    mor_compose := by intros; funext; simp [TupleCategory, OpCategory, TypeCat, Category.compose_assoc];
+    mor_identity := by simp [TupleCategory, OpCategory, TypeCat]
+  }
 
 structure IsInitialObject (T : Category) (obj : T.Obj) where
   mor (a : T.Obj) : T.Mor obj a
@@ -506,17 +692,7 @@ structure AdditiveCategory (T : Category) where
 
 def End (C : Category) := FunctorCategory C C
 
-structure DiscreteMor {J : Type u} (a b : J) : Type u where
-  data : a = b
 
-def Discrete (J : Type _) : Category where
-  Obj := J
-  Mor := DiscreteMor
-  compose a b := {data := Eq.trans a.data b.data}
-  compose_identity a := {data := rfl}
-  compose_identity_left a b := by simp
-  compose_identity_right a b := by simp
-  compose_assoc a b := by simp
 
 def ConstantFunctor (A B :Category) (i : B.Obj) : Functor A B where
   obj x := i
@@ -533,6 +709,9 @@ def Δ (J : Category.{u, v}) (C : Category.{u', v'}) : Functor C (FunctorCategor
   mor f := ConstantTranformation J C f
   mor_compose := by intros; rfl
   mor_identity := by intros; rfl
+
+-- def Cocone' (J : Category) (C : Category) (F : (OpCategory (FunctorCategory J C)).Obj)
+--   := (Category.Hom (FunctorCategory J C)).obj ⟨ F, (Δ J C).obj  ⟩
 
 structure Cocone (J : Category) (C : Category) (F : (FunctorCategory J C).Obj) where
   c : C.Obj
@@ -758,56 +937,57 @@ where
     intro a
     simp [FunctorCategory, FunctorCategory, TransformationIdentity]
 
+-- structure Switch2 : StrictFunctor2
 
-def ExtendFunctor
-  (J Domain Codomain : Category)
-  (Γ : Functor (FunctorCategory J Codomain) Codomain)
-  :
-  Functor (FunctorCategory J (FunctorCategory Domain Codomain)) (FunctorCategory Domain Codomain)
-where
-  obj x := FunctorCompose (Switch.obj x) Γ
-  mor ε := FunctorActionOnTransformation (Switch.mor ε) Γ
-  mor_compose := by
-    intro a b f c h
-    apply FunctorActionOnTransformation.compose (Switch.mor f) (Switch.mor h) Γ
-  mor_identity := by
-    intro a
-    apply FunctorActionOnTransformation.identity
+-- def ExtendFunctor
+--   (J Domain Codomain : Category)
+--   (Γ : Functor (FunctorCategory J Codomain) Codomain)
+--   :
+--   Functor (FunctorCategory J (FunctorCategory Domain Codomain)) (FunctorCategory Domain Codomain)
+-- where
+--   obj x := FunctorCompose (Switch.obj x) Γ
+--   mor ε := FunctorActionOnTransformation (Switch.mor ε) Γ
+--   mor_compose := by
+--     intro a b f c h
+--     apply FunctorActionOnTransformation.compose (Switch.mor f) (Switch.mor h) Γ
+--   mor_identity := by
+--     intro a
+--     apply FunctorActionOnTransformation.identity
 
-def Extend''
-  (J D C : Category)
-  :
-  Functor
-  (D∶(J∶C))
-  (FunctorCategory ((J∶C)∶C) (D∶C))
-  := FunctorComposition D (J∶C) C
-def Extend'''
-  (J D C : Category)
-  :
-  Functor
-  (J∶(D∶C))
-  (FunctorCategory ((J∶C)∶C) (D∶C))
-  := FunctorCompose Switch (FunctorComposition D (J∶C) C)
-def Extend'
-  (J D C : Category)
-  :
-  Functor
-  ((J∶C)∶C)
-  (FunctorCategory (D∶(J∶C)) (D∶C))
-  := Switch.obj (FunctorComposition D (J∶C) C)
+-- def Extend''
+--   (J D C : Category)
+--   :
+--   Functor
+--   (D∶(J∶C))
+--   (FunctorCategory ((J∶C)∶C) (D∶C))
+--   := FunctorComposition D (J∶C) C
+-- def Extend'''
+--   (J D C : Category)
+--   :
+--   Functor
+--   (J∶(D∶C))
+--   (FunctorCategory ((J∶C)∶C) (D∶C))
+--   := FunctorCompose Switch (FunctorComposition D (J∶C) C)
+-- def Extend'
+--   (J D C : Category)
+--   :
+--   Functor
+--   ((J∶C)∶C)
+--   (FunctorCategory (D∶(J∶C)) (D∶C))
+--   := Switch.obj (FunctorComposition D (J∶C) C)
 
-def FunctorExtension
-  (J D C : Category)
-  :
-  Functor
-  ((J∶C)∶C)
-  (FunctorCategory (J∶(D∶C)) (D∶C))
-:= Switch.obj (FunctorCompose Switch (FunctorComposition D (J∶C) C))
+-- def FunctorExtension
+--   (J D C : Category)
+--   :
+--   Functor
+--   ((J∶C)∶C)
+--   (FunctorCategory (J∶(D∶C)) (D∶C))
+-- := Switch.obj (FunctorCompose Switch (FunctorComposition D (J∶C) C))
 
-def EndoExtension
-  (D C : Category)
-  : (C∶C) ⥤ (FunctorCategory (D∶C) (D∶C))
-:= Switch.obj (FunctorComposition D C C)
+-- def EndoExtension
+--   (D C : Category)
+--   : (C∶C) ⥤ (FunctorCategory (D∶C) (D∶C))
+-- := Switch.obj (FunctorComposition D C C)
 
 -- def EndoSwitch
 --   (A B C : Category)
@@ -824,6 +1004,9 @@ def EndoExtension
 --   τ := cast _ ((FunctorCompose (EndoExtension (Domain) (J∶Codomain)) (EndoSwitch Domain J Codomain)).mor h.τ)
 
 
+
+-- #check Switch.mor
+
 -- def ExtendColimit
 --   (J Domain Codomain : Category)
 --   (Γ : Functor (FunctorCategory J Codomain) Codomain)
@@ -835,8 +1018,96 @@ def EndoExtension
 --     data x := Switch.mor (TransformationConsumeFunctor (Switch.obj x) (h.τ))
 --     naturality := by
 --       intro a b f
+--       apply Transformation.ext
+--       funext q
+--       apply Transformation.ext
+--       funext w
 
 --   }
+
+-- def test  (J D C : Category)
+--   (F G : Functor (J∶C) (J∶C))
+--   (τ : Transformation F G)
+--   (x : Functor D (J∶C))
+--   : Transformation (FunctorCompose x F) (FunctorCompose x G)
+--   := TransformationConsumeFunctor x τ
+
+-- def test2 (J D C : Category)
+--   (F G : Functor (J∶C) (J∶C))
+--   (x : Functor J (D∶C))
+--   (τ : Transformation (FunctorCompose (Switch.obj x) F) (FunctorCompose (Switch.obj x) G))
+--   :
+
+macro "catsimp_extended" : tactic => `(tactic|
+  (simp [
+      Switch, Δ, ConstantTranformation, ConstantFunctor, FunctorPostComposition
+  ] <;> try rfl)
+)
+
+def ApplyCocone
+  (J D C : Category)
+  (jdc : Functor J (D∶C))
+  (d : D.Obj)
+  :
+  Functor (CoconeCategory J (D ∶ C) jdc) (CoconeCategory J C ((Switch.obj jdc).obj d))
+  := {
+    obj jdc_cocone := {
+      c := jdc_cocone.c.obj d
+      data := (Switch.mor jdc_cocone.data).data d
+    }
+    mor jdc_mor := {
+      c := jdc_mor.c.data d
+      valid := by
+        catsimp_extended;
+        catsimp;
+        ext x
+        simp
+        have big_valid := jdc_mor.valid
+        simp [Δ, ConstantTranformation, FunctorCategory, TransformationCompose] at big_valid
+        rw [← big_valid]
+        simp
+        rfl
+    }
+    mor_compose := by
+      intros;
+      catsimp_extended;
+    mor_identity := by
+      intros;
+      catsimp_extended;
+  }
+
+
+-- def ExtendColimit
+--   (J D C : Category)
+--   (Γ : Functor (FunctorCategory J C) C)
+--   (h : IsColimit  J C Γ)
+--   :
+--   IsColimit J (FunctorCategory D C) (FunctorCompose Switch ((Hom2 D).functor1.mor Γ))
+-- where
+--   τ := FunctorActionOnTransformation (TransformationConsumeFunctor Switch ((Hom2 D).cell h.τ)) Switch
+--   uni jdc := {
+--     mor a := {
+--       c := {
+--         data d :=
+--           let jc := (Switch.obj jdc).obj d
+--           let test := (h.uni jc).mor
+--           let fixed_cocone := (ApplyCocone J D C jdc d).obj a
+
+--           sorry
+--         naturality := _
+--       }
+--       valid := _
+--     }
+--     unique := _
+--   }
+
+
+
+-- def Hom2Δ (J D C : Cat2.C.Obj) (Γ : Functor (FunctorCategory J C) C) :
+--   Transformation
+--     ((Hom2 D).functor1 ↻ (Γ ∘ᶠ Δ J C))
+--     ((Switch ∘ᶠ ((Hom2 D).functor1 ↻ Γ)) ∘ᶠ Δ J (D∶C))
+--   := sorry
 
 end Category
 
