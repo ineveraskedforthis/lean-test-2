@@ -16,7 +16,6 @@ structure Category : Type max (u + 1) (v + 1) where
   compose_assoc {a b c d : Obj} (h₁ : Mor a b) (h₂ : Mor b c) (h₃ : Mor c d) : compose (compose h₁ h₂) h₃ = compose h₁ (compose h₂ h₃)
 
 -- attribute [simp] Category.compose_assoc
-
 attribute [simp] Category.compose_identity_left
 attribute [simp] Category.compose_identity_right
 
@@ -221,35 +220,6 @@ theorem TransformationConsumeFunctor.identity
   : TransformationConsumeFunctor F ((B∶C).compose_identity G) = (A∶C).compose_identity (FunctorCompose F G)
   := rfl
 
-def FunctorComposition (A B C : Category) : Functor (A∶B) ((B∶C)∶(A∶C)) where
-  obj F := {
-    obj G := FunctorCompose F G
-    mor τ := TransformationConsumeFunctor F τ
-    mor_compose := by
-      intro a b f c h
-      apply TransformationConsumeFunctor.compose
-    mor_identity := by
-      intro G
-      apply TransformationConsumeFunctor.identity
-  }
-  mor {S T} τ := {
-    data G := FunctorActionOnTransformation τ G
-    naturality := by
-      intro H K η
-      simp [TransformationConsumeFunctor, FunctorActionOnTransformation, FunctorCategory, TransformationCompose]
-      funext x
-      exact Eq.symm (η.naturality (τ ₐ x))
-  }
-  mor_compose := by
-    intro F G τ H η
-    simp [FunctorCategory, TransformationCompose]
-    funext x
-    apply FunctorActionOnTransformation.compose
-  mor_identity := by
-    intro a
-    conv => lhs; arg 1; intro x; rw [FunctorActionOnTransformation.identity' x]
-    rfl
-
 def Associator {F : Functor A B} {G : Functor B C} {H : Functor C D} :
   Transformation (FunctorCompose (FunctorCompose F G) H) (FunctorCompose F (FunctorCompose G H)) where
   data q := D.compose_identity _
@@ -285,6 +255,9 @@ structure Category2 : Type max max (u + 2) (v + 2) (w+1) where
 
   interchange : hcomp (vcomp τ ε) (vcomp η μ) = vcomp (hcomp τ η) (hcomp ε μ)
 
+  whisker_arg_to_hcomp {a b c : C.Obj} (H : C.Mor a b) {Q W : C.Mor b c} (τ : Cell Q W) : whisker_arg H τ = hcomp (cell_id H) τ
+  whisker_apply_to_hcomp   {a b c : C.Obj} {Q W : C.Mor a b} (τ : Cell Q W)  (H : C.Mor b c) : whisker_apply τ H = hcomp τ (cell_id H)
+
 -- structure Functor2 (S : Category2.{u,v}) (T: Category2.{u', v'}) where
 --   one : Functor S.C T.C
 --   cell  {A B : S.C.Obj} {F G : S.C.Mor A B} : S.Cell F G → T.Cell (one.mor F) (one.mor G)
@@ -297,7 +270,7 @@ structure Category2 : Type max max (u + 2) (v + 2) (w+1) where
 def Cat2 : Category2.{(max (u + 1) (v + 1)), max u v, max u v} where
   C := {
     Obj := Category.{u, v}
-    Mor := Functor.{u, v}
+    Mor := Functor.{u, v, u, v}
     compose := FunctorCompose
     compose_identity := IdentityFunctor
     compose_identity_left := by simp [FunctorCompose]
@@ -367,6 +340,23 @@ def Cat2 : Category2.{(max (u + 1) (v + 1)), max u v, max u v} where
     congr 1
     exact η.naturality (ε ₐ object)
 
+  whisker_apply_to_hcomp := by
+    intro x y z w τ q H
+    simp [
+      FunctorActionOnTransformation, TransformationIdentity, TransformationCompose, TransformationConsumeFunctor
+    ]
+    ext X
+    exact Eq.symm (z.compose_identity_right ((w ∘ᶠ H).obj X) ((τ ∘ᶠ H).obj X) (H ↻ (q ₐ X)))
+
+  whisker_arg_to_hcomp := by
+    intros
+    simp [
+      FunctorActionOnTransformation, TransformationIdentity, TransformationCompose, TransformationConsumeFunctor
+    ]
+    ext X;
+    (expose_names;
+      exact Eq.symm (c.compose_identity_left ((H ∘ᶠ Q).obj X) ((H ∘ᶠ W).obj X) (τ ₐ H.obj X)))
+
 -- def Composition (C : Cat2.C.Obj) (T : Cat2.C.Obj) (S : Cat2.C.Obj) : ((C∶T)∶((T∶S)∶(C∶S))).Obj := FunctorComposition C T S
 
 -- macro "discharge" : tactic => `(tactic|
@@ -384,6 +374,110 @@ def Cat2 : Category2.{(max (u + 1) (v + 1)), max u v, max u v} where
 --     ] <;> try rfl
 --   )
 -- )
+
+
+-- u v
+-- Cat2.C.Obj -> u
+-- Cat2.C.Mor -> v
+-- Functor Cat2.C.Obj Cat2.C.Obj -> max u v
+
+
+def ULiftCategory (A : Cat2.{u, v}.C.Obj) : Cat2.{max u u', max v v'}.C.Obj := {
+  Obj := ULift.{u', u} A.Obj
+  Mor a b := ULift.{v', v} (A.Mor a.down b.down)
+  compose f g := ULift.up (A.compose f.down g.down)
+  compose_identity a := ULift.up (A.compose_identity a.down)
+  compose_identity_left a b h := by cases A <;> simp_all
+  compose_identity_right := by cases A <;> simp_all
+  compose_assoc := by simp [A.compose_assoc]
+}
+
+
+
+
+def Exp (A : Cat2.{u, v}.C.Obj) (B : Cat2.{u', v'}.C.Obj) : Cat2.{max u u' v v', max u u' v v'}.C.Obj := {
+  Obj := Cat2.{max u u', max v v'}.C.Mor (ULiftCategory A) (ULiftCategory B)
+  Mor F G := Cat2.{max u u', max v v'}.Cell F G
+  compose := Cat2.vcomp
+  compose_identity := Cat2.cell_id
+  compose_identity_left a b h := by exact Cat2.vcomp_id_left h
+  compose_identity_right a b h := by exact Cat2.vcomp_id_right h
+  compose_assoc := by exact Cat2.vcomp_assoc
+}
+
+
+macro "cat2simp" : tactic => `(tactic|
+  (simp [
+      -- ULiftCategory,
+      Category2.interchange,
+      Category2.vcomp_assoc, Category2.vcomp_id_left, Category2.vcomp_id_right,
+      Category2.hcomp_id_id, Category2.hcomp_id_left, Category2.hcomp_id_right,
+      Category2.whisker_apply_to_hcomp, Category2.whisker_arg_to_hcomp,
+      Category.compose_identity_left, Category.compose_identity_right, Category.compose_assoc
+  ] <;> try rfl)
+)
+
+
+infix:120 " ⟶ " => Exp
+
+def FunctorComposition (A B C : Category) : Functor (A∶B) ((B∶C)∶(A∶C)) where
+  obj F := {
+    obj G := FunctorCompose F G
+    mor τ := TransformationConsumeFunctor F τ
+    mor_compose := by
+      intro a b f c h
+      apply TransformationConsumeFunctor.compose
+    mor_identity := by
+      intro G
+      apply TransformationConsumeFunctor.identity
+  }
+  mor {S T} τ := {
+    data G := FunctorActionOnTransformation τ G
+    naturality := by
+      intro H K η
+      simp [TransformationConsumeFunctor, FunctorActionOnTransformation, FunctorCategory, TransformationCompose]
+      funext x
+      exact Eq.symm (η.naturality (τ ₐ x))
+  }
+  mor_compose := by
+    intro F G τ H η
+    simp [FunctorCategory, TransformationCompose]
+    funext x
+    apply FunctorActionOnTransformation.compose
+  mor_identity := by
+    intro a
+    conv => lhs; arg 1; intro x; rw [FunctorActionOnTransformation.identity' x]
+    rfl
+
+-- def FunctorComposition2 (A B C : Cat2.{u, v}.C.Obj) : Cat2.C.Mor ( A ⟶ B)  ((B ⟶ C)⟶ (A ⟶ C)) where
+--   obj F := {
+--     obj G := ULift.up (Cat2.C.compose F G.down)
+--     mor τ :=  ULift.up (Cat2.whisker_arg (F) (ULift.down τ))
+--     mor_compose := by intros; rfl
+--     mor_identity := by intros; rfl
+--   }
+--   mor {S T} τ := {
+--     data G := ULift.up (Cat2.whisker_apply τ G.down)
+--     naturality := by
+--       intro H K η;
+--       cat2simp;
+--       -- simp [ULiftCategory]
+--       rw [Cat2.whisker_arg_to_hcomp S η.down]
+--       rw [Cat2.whisker_arg_to_hcomp T η.down]
+--       rw [Cat2.whisker_apply_to_hcomp τ K.down]
+--       rw [Cat2.whisker_apply_to_hcomp τ H.down]
+--       simp [ULiftCategory, Exp]
+--       rw [Cat2.interchange]
+--   }
+--   mor_compose := by
+--     intro F G τ H η
+--     simp [FunctorCategory, TransformationCompose]
+--     funext x
+--     apply FunctorActionOnTransformation.compose
+--   mor_identity := by
+--     intro a
+--     conv => lhs; arg 1; intro x; rw [FunctorActionOnTransformation.identity' x]
+--     rfl
 
 structure IsInitialObject (T : Category) (obj : T.Obj) where
   mor (a : T.Obj) : T.Mor obj a
